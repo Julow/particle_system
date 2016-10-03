@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/03 10:39:11 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/03 16:33:59 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/03 19:48:39 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -156,6 +156,58 @@ cl_mem			get_buffer(cl_context context, cl_mem_flags flags, uint32_t size)
 
 /*
 ** ========================================================================== **
+** Kernel run
+*/
+
+template<class T>
+void			kernel_arg(cl_kernel kernel, uint32_t index, T arg)
+{
+	CL_CALL(clSetKernelArg, kernel, index, sizeof(T), &arg);
+}
+
+template<class ...Args>
+void			kernel_arg(cl_kernel kernel, Args ...args)
+{
+	uint32_t		i;
+
+	i = 0;
+	(void)(int[]){(kernel_arg(kernel, i++, args), 0) ...};
+}
+
+class	kernel_run_work
+{
+public:
+	kernel_run_work(size_t global_work_size,
+				size_t local_work_size = -1,
+				size_t global_work_offset = -1) :
+		_g_size(global_work_size),
+		_g_offset(global_work_offset),
+		_l_size(local_work_size)
+	{}
+
+	size_t const	*g_size(void) const { return (&_g_size); }
+	size_t const	*g_offset(void) const
+		{ return ((_g_offset < 0) ? nullptr : (size_t const*)&_g_offset); }
+	size_t const	*l_size(void) const
+		{ return ((_l_size < 0) ? nullptr : (size_t const*)&_l_size); }
+
+private:
+	size_t		_g_size;
+	ssize_t		_g_offset;
+	ssize_t		_l_size;
+};
+
+template<class ...Args>
+void			kernel_run(cl_command_queue queue, cl_kernel kernel,
+					kernel_run_work const &work, Args ...args)
+{
+	kernel_arg(kernel, args...);
+	CL_CALL(clEnqueueNDRangeKernel, queue, kernel, 1, work.g_offset(),
+			work.g_size(), work.l_size(), 0, NULL, NULL);
+}
+
+/*
+** ========================================================================== **
 */
 
 #include <iostream>
@@ -194,19 +246,11 @@ int				main(void)
 			uint32_t const		init = 0;
 			uint32_t const		inc = 42;
 
-			CL_CALL(clSetKernelArg, test_init_kernel, 0, sizeof(cl_mem), &test_buff);
-			CL_CALL(clSetKernelArg, test_init_kernel, 1, sizeof(uint32_t), &init);
-			CL_CALL(clEnqueueNDRangeKernel, queue, test_init_kernel, 1, NULL,
-				(size_t[]){buff_length}, NULL, 0, NULL, NULL);
+			kernel_run(queue, test_init_kernel, buff_length, test_buff, init);
 
-			CL_CALL(clSetKernelArg, test_inc_kernel, 0, sizeof(cl_mem), &test_buff);
-			CL_CALL(clSetKernelArg, test_inc_kernel, 1, sizeof(uint32_t), &inc);
-			CL_CALL(clEnqueueNDRangeKernel, queue, test_inc_kernel, 1, NULL,
-				(size_t[]){buff_length}, NULL, 0, NULL, NULL);
-			CL_CALL(clEnqueueNDRangeKernel, queue, test_inc_kernel, 1, NULL,
-				(size_t[]){buff_length}, NULL, 0, NULL, NULL);
-			CL_CALL(clEnqueueNDRangeKernel, queue, test_inc_kernel, 1, NULL,
-				(size_t[]){buff_length}, NULL, 0, NULL, NULL);
+			kernel_run(queue, test_inc_kernel, buff_length, test_buff, inc);
+			kernel_run(queue, test_inc_kernel, buff_length, test_buff, inc);
+			kernel_run(queue, test_inc_kernel, buff_length, test_buff, inc);
 
 			clFinish(queue);
 
