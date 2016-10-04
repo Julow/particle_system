@@ -1,4 +1,5 @@
 main module particle_system:
+	private include .
 
 	require ft::cl
 	require ft::gl

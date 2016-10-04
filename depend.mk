@@ -10,7 +10,7 @@ particle_system: $(O_FILES)
 # module ft::cl
 ifeq ($(shell uname),Darwin)
   BASE_FLAGS += -DFT_CL_MAC_OS=1
-  LINK_FLAGS += -framework OpenGL
+  LINK_FLAGS += -framework OpenCL
 else
   LINK_FLAGS += -lOpenCL
 endif
@@ -24,7 +24,10 @@ else
 endif
 
 # module particle_system
-$(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h
+$(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
+	srcs/main/f.hpp
+
+$(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += -Isrcs/main
 
 # public links
 $(O_DIR)/_public/ft/cl.h: srcs/ft_cl/cl.h
