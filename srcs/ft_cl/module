@@ -1,0 +1,4 @@
+module ft::cl:
+	public include .
+
+	makefile import cl.mk

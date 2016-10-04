@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/03 10:39:11 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/03 19:48:39 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/04 13:58:56 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -166,7 +166,7 @@ void			kernel_arg(cl_kernel kernel, uint32_t index, T arg)
 }
 
 template<class ...Args>
-void			kernel_arg(cl_kernel kernel, Args ...args)
+void			kernel_args(cl_kernel kernel, Args&& ...args)
 {
 	uint32_t		i;
 
@@ -199,9 +199,9 @@ private:
 
 template<class ...Args>
 void			kernel_run(cl_command_queue queue, cl_kernel kernel,
-					kernel_run_work const &work, Args ...args)
+					kernel_run_work const &work, Args&& ...args)
 {
-	kernel_arg(kernel, args...);
+	kernel_args(kernel, std::forward<Args>(args)...);
 	CL_CALL(clEnqueueNDRangeKernel, queue, kernel, 1, work.g_offset(),
 			work.g_size(), work.l_size(), 0, NULL, NULL);
 }
@@ -237,6 +237,7 @@ int				main(void)
 				std::cout << "notify " << err << std::endl;
 			});
 		{ // TEST
+
 			cl_program const	test_program = get_program(context, g_test_srcs);
 			cl_kernel const		test_init_kernel = get_kernel(test_program, "test_init");
 			cl_kernel const		test_inc_kernel = get_kernel(test_program, "test_inc");
