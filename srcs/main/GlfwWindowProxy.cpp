@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:48:59 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/05 14:52:01 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/05 19:27:53 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -38,6 +38,7 @@ GlfwWindowProxy::GlfwWindowProxy(unsigned width, unsigned height,
 	glfwSetFramebufferSizeCallback(_window,
 			&GlfwWindowProxy::c_win_framebuffer_size);
 	glfwSetWindowUserPointer(_window, this);
+	glfwMakeContextCurrent(_window);
 }
 
 GlfwWindowProxy::~GlfwWindowProxy()
