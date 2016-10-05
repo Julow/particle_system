@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/04 17:32:55 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/05 15:43:36 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -274,57 +274,45 @@ void			kernel_run(cl_command_queue queue, cl_kernel kernel,
 ** ========================================================================== **
 */
 
+#include "GlfwWindowProxy.hpp"
 #include <iostream>
 
-static char const *const	g_test_srcs = {
-	"__kernel void	test_init(__global uint *buff, uint init)"
-	"{"
-	"	buff[get_global_id(0)] = init;"
-	"}"
-	"__kernel void	test_inc(__global uint *buff, uint inc)"
-	"{"
-	"	buff[get_global_id(0)] += inc;"
-	"}"
+class	Main final : public GlfwWindowProxy
+{
+public:
+	Main() :
+		GlfwWindowProxy(500, 500, "lol")
+	{}
+	virtual ~Main() {}
+
+	void			loop()
+	{
+		while (!glfwWindowShouldClose(get_window()))
+			glfwPollEvents();
+	}
+
+private:
+
+private:
+	Main(Main &&src) = delete;
+	Main(Main const &src) = delete;
+	Main			&operator=(Main &&rhs) = delete;
+	Main			&operator=(Main const &rhs) = delete;
 };
 
-#define TEST_SIZE	100000000
-
-int				main(void)
+int				main()
 {
-	cl_context			context;
-	cl_command_queue	queue;
+	Main			*m;
 
 	try
 	{
-		std::tie(context, queue) = get_context(get_platform(),
-			[](char const *err, void const*, size_t){
-				std::cout << "notify " << err << std::endl;
-			});
-		{ // TEST
-
-			cl_program const	test_program = get_program(context, g_test_srcs);
-			cl_kernel const		test_init_kernel = get_kernel(test_program, "test_init");
-			cl_kernel const		test_inc_kernel = get_kernel(test_program, "test_inc");
-			uint32_t const		buff_length = TEST_SIZE;
-			uint32_t const		buff_size = buff_length * sizeof(uint32_t);
-			cl_mem const		test_buff = get_buffer(context, CL_MEM_READ_WRITE, buff_size);
-			uint32_t const		init = 0;
-			uint32_t const		inc = 42;
-
-			kernel_run(queue, test_init_kernel, buff_length, test_buff, init);
-
-			kernel_run(queue, test_inc_kernel, buff_length, test_buff, inc);
-			kernel_run(queue, test_inc_kernel, buff_length, test_buff, inc);
-			kernel_run(queue, test_inc_kernel, buff_length, test_buff, inc);
-
-			clFinish(queue);
-
-		}
-		CL_CALL(clReleaseContext, context);
+		m = new Main();
 	}
 	catch (std::runtime_error const &e)
 	{
-		std::cout << "OpenCL error: " << e.what() << std::endl;
+		std::cout << "Init error: " << e.what() << std::endl;
+		return (1);
 	}
+	m->loop();
 	return (0);
 }

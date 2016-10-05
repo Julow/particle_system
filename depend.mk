@@ -2,7 +2,7 @@ INCLUDE_FLAGS += -I$(O_DIR)/_public
 MAINS += particle_system
 OBJ_DIR_TREE += $(O_DIR)/srcs/main/ $(O_DIR)/srcs/ $(O_DIR)/_public/ft/ \
 	$(O_DIR)/_public/ $(O_DIR)/
-O_FILES += $(O_DIR)/srcs/main/main.o
+O_FILES += $(O_DIR)/srcs/main/GlfwWindowProxy.o $(O_DIR)/srcs/main/main.o
 PUBLIC_LINKS += $(O_DIR)/_public/ft/cl.h $(O_DIR)/_public/ft/gl.h
 
 particle_system: $(O_FILES)
@@ -24,10 +24,13 @@ else
 endif
 
 # module particle_system
+$(O_DIR)/srcs/main/GlfwWindowProxy.o: srcs/main/GlfwWindowProxy.cpp \
+	libft/ft_gl/gl.h srcs/main/GlfwWindowProxy.hpp
 $(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
-	srcs/main/f.hpp
+	srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp
 
-$(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += -Isrcs/main
+$(O_DIR)/srcs/main/GlfwWindowProxy.o $(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS \
+	+= -Isrcs/main
 
 # public links
 $(O_DIR)/_public/ft/cl.h: srcs/ft_cl/cl.h
