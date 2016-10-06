@@ -30,6 +30,7 @@ $(O_DIR)/srcs/main/ClContextProxy.o: srcs/main/ClContextProxy.cpp \
 $(O_DIR)/srcs/main/GlfwWindowProxy.o: srcs/main/GlfwWindowProxy.cpp \
 	libft/ft_gl/gl.h srcs/main/GlfwWindowProxy.hpp
 $(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
+	srcs/main/ClContextProxy.hpp srcs/main/ClKernel.hpp srcs/main/ClKernel.tpp \
 	srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp
 
 $(O_DIR)/srcs/main/ClContextProxy.o $(O_DIR)/srcs/main/GlfwWindowProxy.o \

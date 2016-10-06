@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/05 19:27:35 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/06 17:40:21 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -14,6 +14,7 @@
 #include "ft/gl.h"
 
 #include "ClContextProxy.hpp"
+#include "ClKernel.hpp"
 #include "GlfwWindowProxy.hpp"
 #include "f.hpp"
 
@@ -65,7 +66,8 @@ cl_program		get_program(cl_context context, char const *str)
 			sizeof(device), &device, NULL)) != CL_SUCCESS)
 		cl_error(err, "clGetContextInfo");
 	program = clCreateProgramWithSource(context, 1, &str, NULL, &err);
-	cl_error(err, "clCreateProgramWithSource");
+	if (err != CL_SUCCESS)
+		cl_error(err, "clCreateProgramWithSource");
 	err = clBuildProgram(program, 1, &device, "", NULL, NULL);
 	if (err == CL_BUILD_PROGRAM_FAILURE)
 		program_build_error(program, device);
@@ -77,15 +79,9 @@ cl_program		get_program(cl_context context, char const *str)
 	return (program);
 }
 
-cl_kernel		get_kernel(cl_program program, char const *kernel_name)
-{
-	cl_int			err;
-	cl_kernel		kernel;
-
-	kernel = clCreateKernel(program, kernel_name, &err);
-	cl_error(err, "clCreateKernel");
-	return (kernel);
-}
+/*
+** ========================================================================== **
+*/
 
 cl_mem			get_buffer(cl_context context, cl_mem_flags flags, uint32_t size)
 {
@@ -93,71 +89,16 @@ cl_mem			get_buffer(cl_context context, cl_mem_flags flags, uint32_t size)
 	cl_mem			buff;
 
 	buff = clCreateBuffer(context, flags, size, NULL, &err);
-	cl_error(err, "clCreateBuffer");
+	if (err != CL_SUCCESS)
+		cl_error(err, "clCreateBuffer");
 	return (buff);
 }
 
 /*
 ** ========================================================================== **
-** Kernel run
 */
 
-template<class T>
-void			kernel_arg(cl_kernel kernel, uint32_t index, T arg)
-{
-	cl_int			err;
-
-	if ((err = clSetKernelArg(kernel, index, sizeof(T), &arg)) != CL_SUCCESS)
-		cl_error(err, "clSetKernelArg");
-}
-
-template<class ...Args>
-void			kernel_args(cl_kernel kernel, Args&& ...args)
-{
-	uint32_t		i;
-
-	i = 0;
-	(void)(int[]){(kernel_arg(kernel, i++, args), 0) ...};
-}
-
-class	kernel_run_work
-{
-public:
-	kernel_run_work(size_t global_work_size,
-				size_t local_work_size = -1,
-				size_t global_work_offset = -1) :
-		_g_size(global_work_size),
-		_g_offset(global_work_offset),
-		_l_size(local_work_size)
-	{}
-
-	size_t const	*g_size(void) const { return (&_g_size); }
-	size_t const	*g_offset(void) const
-		{ return ((_g_offset < 0) ? nullptr : (size_t const*)&_g_offset); }
-	size_t const	*l_size(void) const
-		{ return ((_l_size < 0) ? nullptr : (size_t const*)&_l_size); }
-
-private:
-	size_t		_g_size;
-	ssize_t		_g_offset;
-	ssize_t		_l_size;
-};
-
-template<class ...Args>
-void			kernel_run(cl_command_queue queue, cl_kernel kernel,
-					kernel_run_work const &work, Args&& ...args)
-{
-	cl_int			err;
-
-	kernel_args(kernel, std::forward<Args>(args)...);
-	if ((err = clEnqueueNDRangeKernel(queue, kernel, 1, work.g_offset(),
-			work.g_size(), work.l_size(), 0, NULL, NULL)) != CL_SUCCESS)
-		cl_error(err, "clEnqueueNDRangeKernel");
-}
-
-/*
-** ========================================================================== **
-*/
+#define TEST_SIZE		10000
 
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
@@ -166,10 +107,54 @@ public:
 		GlfwWindowProxy(500, 500, "lol"),
 		ClContextProxy()
 	{}
+
 	virtual ~Main() {}
 
 	void			loop()
 	{
+		{ // TEST
+			std::cout << "begin test" << std::endl;
+
+			cl_program const	test_prog = get_program(get_context(),
+					"__kernel void		test_init(__global float *buff, uint v)"
+					"{"
+					"	buff[get_global_id(0)] = v;"
+					"}"
+					""
+					"__kernel void		test_mv(__global float *dst,"
+					"						__global float const *src)"
+					"{"
+					"	unsigned id = get_global_id(0);"
+					"	dst[id] = src[id];"
+					"}"
+				);
+
+			ClKernel<cl_mem, cl_uint>	test_init(test_prog, "test_init");
+			ClKernel<cl_mem, cl_mem>	test_mv(test_prog, "test_mv");
+
+			cl_mem				buff_a = get_buffer(get_context(), CL_MEM_READ_WRITE, sizeof(float)*TEST_SIZE);
+			cl_mem				buff_b = get_buffer(get_context(), CL_MEM_READ_WRITE, sizeof(float)*TEST_SIZE);
+
+			test_init(get_queue(), TEST_SIZE, buff_a, 42);
+			test_init(get_queue(), TEST_SIZE, buff_b, 12);
+
+			test_mv(get_queue(), TEST_SIZE, buff_b, buff_a);
+
+			{ // TMP PRINT
+				cl_mem const		tmp_buff = buff_b;
+
+				float				tmp[TEST_SIZE];
+				cl_int				err;
+				err = clEnqueueReadBuffer(get_queue(), tmp_buff, true, 0, sizeof(tmp), &tmp, 0, NULL, NULL);
+				if (err != CL_SUCCESS) cl_error(err, "clEnqueueReadBuffer (TEST)");
+				for (float f : tmp) std::cout << f << " ";
+				std::cout << std::endl;
+			}
+
+			clFinish(get_queue());
+			std::cout << "end test" << std::endl;
+		}
+
 		while (!glfwWindowShouldClose(get_window()))
 			glfwPollEvents();
 	}
@@ -197,5 +182,6 @@ int				main()
 		return (1);
 	}
 	m->loop();
+	delete m;
 	return (0);
 }

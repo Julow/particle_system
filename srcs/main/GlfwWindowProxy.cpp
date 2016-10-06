@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:48:59 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/05 19:27:53 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/06 12:27:40 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -14,11 +14,16 @@
 #include <stdexcept>
 
 GlfwWindowProxy::GlfwWindowProxy(unsigned width, unsigned height,
-		char const *title)
+		char const *title, std::pair<unsigned, unsigned> gl_version)
 {
 	init();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gl_version.first);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, gl_version.second);
+	// For macos and gl_version >= 3.2:
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	// -
 	_window = glfwCreateWindow(width, height, title, NULL, NULL);
-	// _window = glfwCreateWindow(width, height, title, glfwGetPrimaryMonitor(), NULL);
 	if (_window == NULL)
 	{
 		deinit();

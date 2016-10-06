@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 15:57:31 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/05 19:30:03 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/06 17:40:05 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -97,64 +97,64 @@ static void		cl_error(cl_int err, char const *str)
 
 #include <iostream>
 
-// TODO: check device's opencl version and required extensions
-static bool		get_device(cl_platform_id platform, cl_device_id &dst)
-{
-	cl_device_type const	type = CL_DEVICE_TYPE_GPU;
-	unsigned const			device_count = ({
-			cl_uint				count;
-			(clGetDeviceIDs(platform, type, 0, nullptr, &count) == CL_SUCCESS) ?
-				count : 0;
-		});
-	cl_device_id			devices[device_count];
+// // TODO: check device's opencl version and required extensions
+// static bool		get_device(cl_platform_id platform, cl_device_id &dst)
+// {
+// 	cl_device_type const	type = CL_DEVICE_TYPE_GPU;
+// 	unsigned const			device_count = ({
+// 			cl_uint				count;
+// 			(clGetDeviceIDs(platform, type, 0, nullptr, &count) == CL_SUCCESS) ?
+// 				count : 0;
+// 		});
+// 	cl_device_id			devices[device_count];
 
-	if (device_count == 0 || clGetDeviceIDs(platform, type,
-					device_count, devices, nullptr) != CL_SUCCESS)
-		return (false);
-	dst = devices[0];
-	return (true);
-}
+// 	if (device_count == 0 || clGetDeviceIDs(platform, type,
+// 					device_count, devices, nullptr) != CL_SUCCESS)
+// 		return (false);
+// 	dst = devices[0];
+// 	return (true);
+// }
 
-static std::tuple<cl_platform_id, cl_device_id>
-				get_platform()
-{
-	unsigned const	platform_count = ({
-			cl_uint		count;
-			clGetPlatformIDs(0, nullptr, &count); count;
-		});
-	cl_platform_id	platforms[platform_count];
-	std::tuple<cl_platform_id, cl_device_id>	res;
+// static std::tuple<cl_platform_id, cl_device_id>
+// 				get_platform()
+// {
+// 	unsigned const	platform_count = ({
+// 			cl_uint		count;
+// 			clGetPlatformIDs(0, nullptr, &count); count;
+// 		});
+// 	cl_platform_id	platforms[platform_count];
+// 	std::tuple<cl_platform_id, cl_device_id>	res;
 
-	clGetPlatformIDs(platform_count, platforms, nullptr);
-	for (auto p : platforms)
-	{
-		std::get<0>(res) = p;
-		if (get_device(p, std::get<1>(res)))
-			return (res);
-	}
-	throw std::runtime_error("No compatible GPU found");
-}
+// 	clGetPlatformIDs(platform_count, platforms, nullptr);
+// 	for (auto p : platforms)
+// 	{
+// 		std::get<0>(res) = p;
+// 		if (get_device(p, std::get<1>(res)))
+// 			return (res);
+// 	}
+// 	throw std::runtime_error("No compatible GPU found");
+// }
 
-static cl_platform_id	get_first_platform()
-{
-	unsigned const	platform_count = ({
-			cl_uint		count;
-			clGetPlatformIDs(0, nullptr, &count); count;
-		});
-	cl_platform_id	platforms[platform_count];
+// static cl_platform_id	get_first_platform()
+// {
+// 	unsigned const	platform_count = ({
+// 			cl_uint		count;
+// 			clGetPlatformIDs(0, nullptr, &count); count;
+// 		});
+// 	cl_platform_id	platforms[platform_count];
 
-	if (platform_count == 0)
-		throw std::runtime_error("No platform");
-	clGetPlatformIDs(platform_count, platforms, nullptr);
-	return (platforms[0]);
-}
+// 	if (platform_count == 0)
+// 		throw std::runtime_error("No platform");
+// 	clGetPlatformIDs(platform_count, platforms, nullptr);
+// 	return (platforms[0]);
+// }
 
 ClContextProxy::ClContextProxy()
 {
-	cl_platform_id	platform;
 	cl_device_id	device;
 	cl_int			err;
 
+	// cl_platform_id	platform;
 	// std::tie(platform, device) = get_platform();
 	// _context = clCreateContext((cl_context_properties[]){
 	// 		CL_CONTEXT_PLATFORM, (cl_context_properties)platform,
@@ -164,32 +164,14 @@ ClContextProxy::ClContextProxy()
 	// 		0
 	// 	}, 1, &device, nullptr, nullptr, &err);
 
-	// {
-		auto const		gl_context = CGLGetCurrentContext();
+	// -
 
-	// 	// clGetGLContextInfoKHR
-	// 	err = clGetGLContextInfoAPPLE((cl_context_properties const[]){
-	// 			CL_GL_CONTEXT_KHR, (cl_context_properties)gl_context,
-	// 			0
-	// 		}, 
-	// 		// CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR,
-	// 		CL_CGL_DEVICE_FOR_CURRENT_VIRTUAL_SCREEN_APPLE,
-	// 		sizeof(cl_device_id), &device, NULL);
-	// 	if (err != CL_SUCCESS)
-	// 		cl_error(err, "clGetGLContextInfoKHR");
-
-	// 	err = clGetDeviceInfo(device, CL_DEVICE_PLATFORM,
-	// 			sizeof(cl_platform_id), &platform, NULL);
-	// 	if (err != CL_SUCCESS)
-	// 		cl_error(err, "clGetGLContextInfoKHR");
-	// }
-
-	// APPLE
+	auto const		gl_context = CGLGetCurrentContext();
 
 	_context = clCreateContext((cl_context_properties const[]){
 			CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE,
 				(cl_context_properties)CGLGetShareGroup(gl_context),
-			CL_CONTEXT_PLATFORM, (cl_context_properties)get_first_platform(),
+			// CL_CONTEXT_PLATFORM, (cl_context_properties)get_first_platform(),
 			0
 		}, 0, NULL, NULL, NULL, &err);
 	if (_context == nullptr)

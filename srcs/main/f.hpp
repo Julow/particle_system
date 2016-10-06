@@ -6,9 +6,12 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 14:59:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/04 17:22:55 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/06 17:20:54 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
+
+#ifndef F_HPP
+# define F_HPP
 
 #include <ostream>
 #include <sstream>
@@ -122,3 +125,5 @@ ft::f_impl::fmt_holder operator ""_f(char const *fmt, unsigned long)
 {
 	return (ft::f_impl::fmt_holder(fmt));
 }
+
+#endif

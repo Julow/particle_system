@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:49:09 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/05 14:49:59 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/06 12:21:41 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -14,6 +14,7 @@
 # define GLFWWINDOWPROXY_HPP
 
 # include "ft/gl.h"
+# include <utility>
 
 /*
 ** Manage the glfw library
@@ -26,7 +27,8 @@
 class	GlfwWindowProxy
 {
 public:
-	GlfwWindowProxy(unsigned width, unsigned height, char const *title);
+	GlfwWindowProxy(unsigned width, unsigned height, char const *title,
+			std::pair<unsigned, unsigned> gl_version = {4, 1});
 
 	virtual ~GlfwWindowProxy();
 
