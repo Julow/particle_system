@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/06 17:40:21 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/07 15:08:40 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -112,48 +112,49 @@ public:
 
 	void			loop()
 	{
-		{ // TEST
-			std::cout << "begin test" << std::endl;
 
-			cl_program const	test_prog = get_program(get_context(),
-					"__kernel void		test_init(__global float *buff, uint v)"
-					"{"
-					"	buff[get_global_id(0)] = v;"
-					"}"
-					""
-					"__kernel void		test_mv(__global float *dst,"
-					"						__global float const *src)"
-					"{"
-					"	unsigned id = get_global_id(0);"
-					"	dst[id] = src[id];"
-					"}"
-				);
+		// { // TEST
+		// 	std::cout << "begin test" << std::endl;
 
-			ClKernel<cl_mem, cl_uint>	test_init(test_prog, "test_init");
-			ClKernel<cl_mem, cl_mem>	test_mv(test_prog, "test_mv");
+		// 	cl_program const	test_prog = get_program(get_context(),
+		// 			"__kernel void		test_init(__global float *buff, uint v)"
+		// 			"{"
+		// 			"	buff[get_global_id(0)] = v;"
+		// 			"}"
+		// 			""
+		// 			"__kernel void		test_mv(__global float *dst,"
+		// 			"						__global float const *src)"
+		// 			"{"
+		// 			"	unsigned id = get_global_id(0);"
+		// 			"	dst[id] = src[id];"
+		// 			"}"
+		// 		);
 
-			cl_mem				buff_a = get_buffer(get_context(), CL_MEM_READ_WRITE, sizeof(float)*TEST_SIZE);
-			cl_mem				buff_b = get_buffer(get_context(), CL_MEM_READ_WRITE, sizeof(float)*TEST_SIZE);
+		// 	ClKernel<cl_mem, cl_uint>	test_init(test_prog, "test_init");
+		// 	ClKernel<cl_mem, cl_mem>	test_mv(test_prog, "test_mv");
 
-			test_init(get_queue(), TEST_SIZE, buff_a, 42);
-			test_init(get_queue(), TEST_SIZE, buff_b, 12);
+		// 	cl_mem				buff_a = get_buffer(get_context(), CL_MEM_READ_WRITE, sizeof(float)*TEST_SIZE);
+		// 	cl_mem				buff_b = get_buffer(get_context(), CL_MEM_READ_WRITE, sizeof(float)*TEST_SIZE);
 
-			test_mv(get_queue(), TEST_SIZE, buff_b, buff_a);
+		// 	test_init.make_work<1>(TEST_SIZE)(get_queue(), buff_a, 42);
+		// 	test_init.make_work<1>(TEST_SIZE)(get_queue(), buff_b, 12);
 
-			{ // TMP PRINT
-				cl_mem const		tmp_buff = buff_b;
+		// 	test_mv.make_work<1>(TEST_SIZE)(get_queue(), buff_b, buff_a);
 
-				float				tmp[TEST_SIZE];
-				cl_int				err;
-				err = clEnqueueReadBuffer(get_queue(), tmp_buff, true, 0, sizeof(tmp), &tmp, 0, NULL, NULL);
-				if (err != CL_SUCCESS) cl_error(err, "clEnqueueReadBuffer (TEST)");
-				for (float f : tmp) std::cout << f << " ";
-				std::cout << std::endl;
-			}
+		// 	{ // TMP PRINT
+		// 		cl_mem const		tmp_buff = buff_b;
 
-			clFinish(get_queue());
-			std::cout << "end test" << std::endl;
-		}
+		// 		float				tmp[TEST_SIZE];
+		// 		cl_int				err;
+		// 		err = clEnqueueReadBuffer(get_queue(), tmp_buff, true, 0, sizeof(tmp), &tmp, 0, NULL, NULL);
+		// 		if (err != CL_SUCCESS) cl_error(err, "clEnqueueReadBuffer (TEST)");
+		// 		for (float f : tmp) std::cout << f << " ";
+		// 		std::cout << std::endl;
+		// 	}
+
+		// 	clFinish(get_queue());
+		// 	std::cout << "end test" << std::endl;
+		// }
 
 		while (!glfwWindowShouldClose(get_window()))
 			glfwPollEvents();

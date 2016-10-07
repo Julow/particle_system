@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/06 16:57:00 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/06 17:20:34 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/07 14:33:35 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -17,28 +17,51 @@
 # include <stdexcept>
 
 template<typename ...ARGS>
-class	ClKernel<ARGS...>::work_size
+template<size_t D>
+ClKernel<ARGS...>::work<D>::work(ClKernel<ARGS...> &k,
+			array_t &&global_work_size,
+			std::optional<array_t> &&local_work_size,
+			std::optional<array_t> &&global_work_offset) :
+	_kernel(k),
+	_global_size(std::forward<array_t>(global_work_size)),
+	_local_size(local_work_size ?
+		std::make_optional(std::forward<array_t>(*local_work_size)) :
+		std::nullopt),
+	_global_offset(global_work_offset ?
+		std::make_optional(std::forward<array_t>(*global_work_offset)) :
+		std::nullopt)
+{}
+
+template<typename ...ARGS>
+template<size_t D>
+ClKernel<ARGS...>::work<D>::work(work &&k) :
+	_kernel(k._kernel),
+	_global_size(k._global_size),
+	_local_size(k._local_size),
+	_global_offset(k._global_offset)
+{}
+
+template<typename ...ARGS>
+template<size_t D>
+ClKernel<ARGS...>::work<D>::~work()
+{}
+
+template<typename ...ARGS>
+template<size_t D>
+void			ClKernel<ARGS...>::work<D>::operator()(cl_command_queue queue,
+					ARGS ...args)
 {
-public:
-	work_size(size_t global_work_size,
-				size_t local_work_size = -1,
-				size_t global_work_offset = -1) :
-		_g_size(global_work_size),
-		_g_offset(global_work_offset),
-		_l_size(local_work_size)
-	{}
+	cl_int			err;
 
-	size_t const	*g_size(void) const { return (&_g_size); }
-	size_t const	*g_offset(void) const
-		{ return ((_g_offset < 0) ? nullptr : (size_t const*)&_g_offset); }
-	size_t const	*l_size(void) const
-		{ return ((_l_size < 0) ? nullptr : (size_t const*)&_l_size); }
-
-private:
-	size_t		_g_size;
-	ssize_t		_g_offset;
-	ssize_t		_l_size;
-};
+	_kernel.set_args(std::forward<ARGS>(args)...);
+	if ((err = clEnqueueNDRangeKernel(queue, _kernel.get_kernel(), D,
+		(_global_offset ? _array_t::get_data(*_global_offset) : nullptr),
+		_array_t::get_data(_global_size),
+		(_local_size ? _array_t::get_data(*_local_size) : nullptr),
+		0, NULL, NULL)) != CL_SUCCESS)
+	throw std::runtime_error("clEnqueueNDRangeKernel: %"_f
+			(ClContextProxy::strerror(err)));
+}
 
 template<typename ...ARGS>
 ClKernel<ARGS...>::ClKernel(cl_program prog, char const *kernel_name)
@@ -82,26 +105,6 @@ void			ClKernel<ARGS...>::set_args(ARGS&& ...args)
 }
 
 template<typename ...ARGS>
-void			ClKernel<ARGS...>::operator()(cl_command_queue queue,
-					work_size const &work)
-{
-	cl_int			err;
-
-	if ((err = clEnqueueNDRangeKernel(queue, _kernel, 1, work.g_offset(),
-			work.g_size(), work.l_size(), 0, NULL, NULL)) != CL_SUCCESS)
-		throw std::runtime_error("clEnqueueNDRangeKernel: %"_f
-				(ClContextProxy::strerror(err)));
-}
-
-template<typename ...ARGS>
-void			ClKernel<ARGS...>::operator()(cl_command_queue queue,
-					work_size const &work, ARGS ...args)
-{
-	set_args(std::forward<ARGS>(args)...);
-	(*this)(queue, work);
-}
-
-template<typename ...ARGS>
 template<size_t INDEX, typename HEAD, typename ...TAIL>
 void			ClKernel<ARGS...>::_set_args(HEAD &&arg, TAIL&& ...tail)
 {
@@ -114,6 +117,19 @@ template<typename T>
 cl_int			ClKernel<ARGS...>::_set_arg(unsigned index, T&& arg)
 {
 	return (clSetKernelArg(_kernel, index, sizeof(arg), &arg));
+}
+
+template<typename ...ARGS>
+template<size_t D>
+ClKernel<ARGS...>::work<D>	ClKernel<ARGS...>::make_work(
+				typename work<D>::array_t global_work_size,
+				std::optional<typename work<D>::array_t> local_work_size,
+				std::optional<typename work<D>::array_t> global_work_offset)
+{
+	return (work<D>(*this,
+			std::forward<typename work<D>::array_t>(global_work_size),
+			std::forward<std::optional<typename work<D>::array_t>>(local_work_size),
+			std::forward<std::optional<typename work<D>::array_t>>(global_work_offset)));
 }
 
 #endif

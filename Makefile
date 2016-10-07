@@ -26,7 +26,7 @@ export DEBUG_MODE
 
 # Compilers
 CC				= clang
-CXX				= clang++ -std=c++14
+CXX				= clang++ -std=c++1y
 LINKER			= $(CC)
 
 # Objects directory
