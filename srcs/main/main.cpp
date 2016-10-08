@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 15:42:52 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/08 16:45:58 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -177,6 +177,7 @@ GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
 
 /*
 ** ========================================================================== **
+** GlBuffer
 */
 
 #include "particule.cl.h"
@@ -227,7 +228,7 @@ public:
 		glDeleteBuffers(1, &_handle);
 	}
 
-	GLuint			get_gl_handle() { return (_handle); }
+	GLuint			get_handle() { return (_handle); }
 
 private:
 	GLuint			_handle;
@@ -249,6 +250,80 @@ private:
 	GlBuffer		&operator=(GlBuffer &&rhs) = delete;
 	GlBuffer		&operator=(GlBuffer const &rhs) = delete;
 };
+
+/*
+** ========================================================================== **
+** ClGlBuffer
+*/
+
+template<typename T, typename ...ATTRIBS>
+class	ClGlBuffer : GlBuffer<T, ATTRIBS...>
+{
+public:
+	class	acquired
+	{
+	public:
+		acquired(cl_command_queue queue, cl_mem handle) :
+			_queue(queue), _handle(handle)
+		{
+			clEnqueueAcquireGLObjects(queue, 1, &handle, 0, NULL, NULL);
+		}
+
+		acquired(acquired &&src) :
+			_queue(src._queue), _handle(src._handle)
+		{}
+
+		virtual ~acquired()
+		{
+			clEnqueueReleaseGLObjects(_queue, 1, &_handle, 0, NULL, NULL);
+		}
+
+		cl_mem			get_handle() { return (_handle); }
+
+	private:
+		cl_command_queue	_queue;
+		cl_mem				_handle;
+
+	private:
+		acquired() = delete;
+		acquired(acquired const &src) = delete;
+		acquired			&operator=(acquired &&rhs) = delete;
+		acquired			&operator=(acquired const &rhs) = delete;
+	};
+
+	ClGlBuffer(cl_context c, size_t size, T const *data = nullptr) :
+		GlBuffer<T, ATTRIBS...>(size, data)
+	{
+		cl_int			err;
+
+		if ((_handle = clCreateFromGLBuffer(c, CL_MEM_READ_WRITE,
+					get_gl_handle(), &err)) == NULL)
+			cl_error(err, "clCreateFromGLBuffer");
+	}
+
+	virtual ~ClGlBuffer()
+	{
+		clReleaseMemObject(_handle);
+	}
+
+	acquired		cl_acquire(cl_command_queue queue)
+		{ return (acquired(queue, _handle)); }
+
+	GLuint			get_gl_handle()
+		{ return (GlBuffer<T, ATTRIBS...>::get_handle()); }
+	cl_mem			get_cl_handle() { return (_handle); }
+
+private:
+	cl_mem			_handle;
+
+private:
+	ClGlBuffer() = delete;
+	ClGlBuffer(ClGlBuffer &&src) = delete;
+	ClGlBuffer(ClGlBuffer const &src) = delete;
+	ClGlBuffer		&operator=(ClGlBuffer &&rhs) = delete;
+	ClGlBuffer		&operator=(ClGlBuffer const &rhs) = delete;
+};
+
 
 /*
 ** ========================================================================== **
@@ -310,21 +385,11 @@ public:
 				},
 			})),
 
-		_gl_particules(particule_count)
+		_particules_buffer(get_context(), particule_count)
 
 	{
-
 		glViewport(0, 0, 500, 500);
 		glEnable(GL_DEPTH_TEST);
-
-		{ // init _cl_particules object
-			cl_int			err;
-
-			if ((_cl_particules = clCreateFromGLBuffer(get_context(),
-						CL_MEM_READ_WRITE, _gl_particules.get_gl_handle(),
-						&err)) == NULL)
-				cl_error(err, "clCreateFromGLBuffer");
-		}
 	}
 
 	virtual ~Main() {}
@@ -336,23 +401,20 @@ public:
 
 	GLuint				_shader_program;
 
-	GlBuffer<particule::particule,
+	ClGlBuffer<particule::particule,
 				attrib<particule::particule, particule::vec3, &particule::particule::pos>,
 				attrib<particule::particule, particule::vec3, &particule::particule::color>
-			>			_gl_particules;
-
-	cl_mem				_cl_particules;
+			>			_particules_buffer;
 
 	void			loop()
 	{
 		{ // init particules
-			clEnqueueAcquireGLObjects(get_queue(), 1, &_cl_particules, 0, NULL, NULL);
+			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
 
-			_init_kernel.make_work<1>(particule_count)(get_queue(), _cl_particules);
-
-			clEnqueueReleaseGLObjects(get_queue(), 1, &_cl_particules, 0, NULL, NULL);
-			clFinish(get_queue());
+			_init_kernel.make_work<1>(particule_count)
+					(get_queue(), p_buffer.get_handle());
 		}
+		clFinish(get_queue());
 
 		glfwPollEvents();
 		while (!glfwWindowShouldClose(get_window()))
@@ -361,7 +423,7 @@ public:
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glUseProgram(_shader_program);
-			glBindBuffer(GL_ARRAY_BUFFER, _gl_particules.get_gl_handle());
+			glBindBuffer(GL_ARRAY_BUFFER, _particules_buffer.get_gl_handle());
 			glDrawArrays(GL_POINTS, 0, particule_count);
 
 			glFlush();
