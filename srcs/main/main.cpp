@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/07 19:28:56 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/08 15:42:52 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -181,6 +181,81 @@ GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
 
 #include "particule.cl.h"
 
+template<typename T, typename V_TYPE, V_TYPE T::* PTR>
+struct	attrib
+{
+	typedef V_TYPE						v_type;
+
+	static size_t		offset()
+	{
+		return (reinterpret_cast<size_t>(&(reinterpret_cast<T const*>(0)->*PTR)));
+	}
+};
+
+template<GLenum TYPE_NAME, size_t SIZE>
+struct	_gl_type
+{
+	constexpr static GLenum const	type_name = TYPE_NAME;
+	constexpr static size_t const	size = SIZE;
+};
+
+template<typename T>
+struct	gl_type {};
+
+template<>
+struct	gl_type<float> : _gl_type<GL_FLOAT, 1> {};
+
+template<>
+struct	gl_type<particule::vec3> : _gl_type<GL_FLOAT, 3> {};
+
+template<typename T, typename ...ATTRIBS>
+class	GlBuffer
+{
+public:
+	GlBuffer(size_t size, T const *data = nullptr)
+	{
+		glGenBuffers(1, &_handle);
+		glBindBuffer(GL_ARRAY_BUFFER, _handle);
+		glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data, GL_STATIC_DRAW);
+
+		unsigned i = 0;
+		(void)(int[]){(_init_attrib<ATTRIBS>(i++), 0)...};
+	}
+
+	virtual ~GlBuffer()
+	{
+		glDeleteBuffers(1, &_handle);
+	}
+
+	GLuint			get_gl_handle() { return (_handle); }
+
+private:
+	GLuint			_handle;
+
+	template<typename ATTR>
+	void			_init_attrib(unsigned index)
+	{
+		using attr_t = gl_type<typename ATTR::v_type>;
+
+		glVertexAttribPointer(index, attr_t::size, attr_t::type_name, GL_FALSE,
+				sizeof(T), (GLvoid*)ATTR::offset());
+		glEnableVertexAttribArray(index);
+	}
+
+private:
+	GlBuffer() = delete;
+	GlBuffer(GlBuffer &&src) = delete;
+	GlBuffer(GlBuffer const &src) = delete;
+	GlBuffer		&operator=(GlBuffer &&rhs) = delete;
+	GlBuffer		&operator=(GlBuffer const &rhs) = delete;
+};
+
+/*
+** ========================================================================== **
+*/
+
+#include "particule.cl.h"
+
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
 public:
@@ -233,38 +308,21 @@ public:
 					"	color = vec4(0.5f, 0.5f, 0.5f, 0.5f);"
 					"}"
 				},
-			}))
+			})),
+
+		_gl_particules(particule_count)
 
 	{
 
 		glViewport(0, 0, 500, 500);
 		glEnable(GL_DEPTH_TEST);
 
-		{ // init _gl_particules buffer
-			glGenBuffers(1, &_gl_particules);
-			glBindBuffer(GL_ARRAY_BUFFER, _gl_particules);
-			glBufferData(GL_ARRAY_BUFFER,
-					sizeof(particule::particule) * particule_count,
-					(particule::particule[]){
-						{{0, 0, 0}, {1, 1, 1}},
-						{{0, 0, 0}, {1, 1, 1}},
-						{{0, 0, 0}, {1, 1, 1}},
-					}, GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-					sizeof(particule::particule),
-					(GLvoid*)offsetof(particule::particule, pos));
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
-					sizeof(particule::particule),
-					(GLvoid*)offsetof(particule::particule, color));
-			glEnableVertexAttribArray(1);
-		}
-
 		{ // init _cl_particules object
 			cl_int			err;
 
 			if ((_cl_particules = clCreateFromGLBuffer(get_context(),
-						CL_MEM_READ_WRITE, _gl_particules, &err)) == NULL)
+						CL_MEM_READ_WRITE, _gl_particules.get_gl_handle(),
+						&err)) == NULL)
 				cl_error(err, "clCreateFromGLBuffer");
 		}
 	}
@@ -278,7 +336,11 @@ public:
 
 	GLuint				_shader_program;
 
-	GLuint				_gl_particules;
+	GlBuffer<particule::particule,
+				attrib<particule::particule, particule::vec3, &particule::particule::pos>,
+				attrib<particule::particule, particule::vec3, &particule::particule::color>
+			>			_gl_particules;
+
 	cl_mem				_cl_particules;
 
 	void			loop()
@@ -299,14 +361,12 @@ public:
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glUseProgram(_shader_program);
-			glBindBuffer(GL_ARRAY_BUFFER, _gl_particules);
+			glBindBuffer(GL_ARRAY_BUFFER, _gl_particules.get_gl_handle());
 			glDrawArrays(GL_POINTS, 0, particule_count);
 
 			glFlush();
 
 			glfwSwapBuffers(get_window());
-			sleep(3);
-			std::cout << "lol" << std::endl;
 			glfwPollEvents();
 		}
 	}
