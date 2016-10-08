@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 18:02:20 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/08 19:48:59 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -175,6 +175,56 @@ GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
 	}
 }
 
+/*
+** ========================================================================== **
+** Get uniform
+*/
+
+#include "gl_utils.hpp"
+
+template<size_t SIZE, typename T>
+class	GlUniform
+{
+public:
+	GlUniform(GLuint program, char const *name)
+	{
+		if ((_loc = glGetUniformLocation(program, name)) < 0)
+			throw std::runtime_error("Unknown uniform %"_f(name));
+	}
+
+	virtual ~GlUniform()
+	{}
+
+	GLuint			get_location() { return (_loc); }
+
+	// only if SIZE == 1
+	void			operator=(T const &v)
+	{
+		gl_utils::gl_type<T>::uniform_write(_loc, 1, (float const*)&v);
+	}
+
+	// SIZE > 1
+	// void			operator=(T const *v)
+	// {
+	// 	gl_utils::gl_type<T>::uniform_write(_loc, SIZE, v);
+	// }
+
+private:
+	GLuint			_loc;
+
+private:
+	GlUniform() = delete;
+	GlUniform(GlUniform &&src) = delete;
+	GlUniform(GlUniform const &src) = delete;
+	GlUniform		&operator=(GlUniform &&rhs) = delete;
+	GlUniform		&operator=(GlUniform const &rhs) = delete;
+};
+
+
+/*
+** ========================================================================== **
+*/
+
 #include "ClGlBuffer.hpp"
 #include "GlBuffer.hpp"
 #include "particule.cl.h"
@@ -227,6 +277,8 @@ public:
 					"in vec3		p_color;"
 					"out vec4		color;"
 					""
+					"uniform float	test_uniform;"
+					""
 					"void		main()"
 					"{"
 					// "	color = vec4(p_color, 1.f);"
@@ -235,7 +287,9 @@ public:
 				},
 			})),
 
-		_particules_buffer(get_context(), particule_count)
+		_particules_buffer(get_context(), particule_count),
+
+		_test_uniform(_shader_program, "test_uniform")
 
 	{
 		glViewport(0, 0, 500, 500);
@@ -256,6 +310,8 @@ public:
 				attrib<particule::particule, particule::vec3, &particule::particule::color>
 			>			_particules_buffer;
 
+	GlUniform<1, float>	_test_uniform;
+
 	void			loop()
 	{
 		{ // init particules
@@ -265,6 +321,8 @@ public:
 					(get_queue(), p_buffer.get_handle());
 		}
 		clFinish(get_queue());
+
+		_test_uniform = 42;
 
 		glfwPollEvents();
 		while (!glfwWindowShouldClose(get_window()))
