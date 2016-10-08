@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 16:45:58 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/08 18:02:20 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -175,161 +175,11 @@ GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
 	}
 }
 
-/*
-** ========================================================================== **
-** GlBuffer
-*/
-
+#include "ClGlBuffer.hpp"
+#include "GlBuffer.hpp"
 #include "particule.cl.h"
 
-template<typename T, typename V_TYPE, V_TYPE T::* PTR>
-struct	attrib
-{
-	typedef V_TYPE						v_type;
-
-	static size_t		offset()
-	{
-		return (reinterpret_cast<size_t>(&(reinterpret_cast<T const*>(0)->*PTR)));
-	}
-};
-
-template<GLenum TYPE_NAME, size_t SIZE>
-struct	_gl_type
-{
-	constexpr static GLenum const	type_name = TYPE_NAME;
-	constexpr static size_t const	size = SIZE;
-};
-
-template<typename T>
-struct	gl_type {};
-
-template<>
-struct	gl_type<float> : _gl_type<GL_FLOAT, 1> {};
-
-template<>
-struct	gl_type<particule::vec3> : _gl_type<GL_FLOAT, 3> {};
-
-template<typename T, typename ...ATTRIBS>
-class	GlBuffer
-{
-public:
-	GlBuffer(size_t size, T const *data = nullptr)
-	{
-		glGenBuffers(1, &_handle);
-		glBindBuffer(GL_ARRAY_BUFFER, _handle);
-		glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data, GL_STATIC_DRAW);
-
-		unsigned i = 0;
-		(void)(int[]){(_init_attrib<ATTRIBS>(i++), 0)...};
-	}
-
-	virtual ~GlBuffer()
-	{
-		glDeleteBuffers(1, &_handle);
-	}
-
-	GLuint			get_handle() { return (_handle); }
-
-private:
-	GLuint			_handle;
-
-	template<typename ATTR>
-	void			_init_attrib(unsigned index)
-	{
-		using attr_t = gl_type<typename ATTR::v_type>;
-
-		glVertexAttribPointer(index, attr_t::size, attr_t::type_name, GL_FALSE,
-				sizeof(T), (GLvoid*)ATTR::offset());
-		glEnableVertexAttribArray(index);
-	}
-
-private:
-	GlBuffer() = delete;
-	GlBuffer(GlBuffer &&src) = delete;
-	GlBuffer(GlBuffer const &src) = delete;
-	GlBuffer		&operator=(GlBuffer &&rhs) = delete;
-	GlBuffer		&operator=(GlBuffer const &rhs) = delete;
-};
-
-/*
-** ========================================================================== **
-** ClGlBuffer
-*/
-
-template<typename T, typename ...ATTRIBS>
-class	ClGlBuffer : GlBuffer<T, ATTRIBS...>
-{
-public:
-	class	acquired
-	{
-	public:
-		acquired(cl_command_queue queue, cl_mem handle) :
-			_queue(queue), _handle(handle)
-		{
-			clEnqueueAcquireGLObjects(queue, 1, &handle, 0, NULL, NULL);
-		}
-
-		acquired(acquired &&src) :
-			_queue(src._queue), _handle(src._handle)
-		{}
-
-		virtual ~acquired()
-		{
-			clEnqueueReleaseGLObjects(_queue, 1, &_handle, 0, NULL, NULL);
-		}
-
-		cl_mem			get_handle() { return (_handle); }
-
-	private:
-		cl_command_queue	_queue;
-		cl_mem				_handle;
-
-	private:
-		acquired() = delete;
-		acquired(acquired const &src) = delete;
-		acquired			&operator=(acquired &&rhs) = delete;
-		acquired			&operator=(acquired const &rhs) = delete;
-	};
-
-	ClGlBuffer(cl_context c, size_t size, T const *data = nullptr) :
-		GlBuffer<T, ATTRIBS...>(size, data)
-	{
-		cl_int			err;
-
-		if ((_handle = clCreateFromGLBuffer(c, CL_MEM_READ_WRITE,
-					get_gl_handle(), &err)) == NULL)
-			cl_error(err, "clCreateFromGLBuffer");
-	}
-
-	virtual ~ClGlBuffer()
-	{
-		clReleaseMemObject(_handle);
-	}
-
-	acquired		cl_acquire(cl_command_queue queue)
-		{ return (acquired(queue, _handle)); }
-
-	GLuint			get_gl_handle()
-		{ return (GlBuffer<T, ATTRIBS...>::get_handle()); }
-	cl_mem			get_cl_handle() { return (_handle); }
-
-private:
-	cl_mem			_handle;
-
-private:
-	ClGlBuffer() = delete;
-	ClGlBuffer(ClGlBuffer &&src) = delete;
-	ClGlBuffer(ClGlBuffer const &src) = delete;
-	ClGlBuffer		&operator=(ClGlBuffer &&rhs) = delete;
-	ClGlBuffer		&operator=(ClGlBuffer const &rhs) = delete;
-};
-
-
-/*
-** ========================================================================== **
-*/
-
-#include "particule.cl.h"
+#include <glm/glm.hpp>
 
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
