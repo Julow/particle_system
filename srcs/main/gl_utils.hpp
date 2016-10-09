@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 19:02:11 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 19:42:05 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/09 17:09:43 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -14,7 +14,9 @@
 # define GL_UTILS_HPP
 
 # include "ft/gl.h"
-# include <glm/vec3.hpp>
+
+# include <glm/glm.hpp>
+# include <glm/gtc/type_ptr.hpp>
 
 namespace gl_utils
 {
@@ -32,13 +34,22 @@ struct	gl_type {};
 template<>
 struct	gl_type<float> : _gl_type<GL_FLOAT, 1>
 {
-	constexpr static void		(*uniform_write)(GLint, GLsizei, GLfloat const*) = glUniform1fv;
+	static void		uniform_write(GLint loc, GLsizei count, float const *v)
+	{ glUniform1fv(loc, count, v); }
 };
 
 template<>
 struct	gl_type<glm::vec3> : _gl_type<GL_FLOAT, 3>
 {
-	constexpr static void		(*uniform_write)(GLint, GLsizei, GLfloat const*) = glUniform3fv;
+	static void		uniform_write(GLint loc, GLsizei count, glm::vec3 const *v)
+	{ glUniform3fv(loc, count, reinterpret_cast<float const*>(v)); }
+};
+
+template<>
+struct	gl_type<glm::mat4> : _gl_type<GL_FLOAT, 16>
+{
+	static void		uniform_write(GLint loc, GLsizei count, glm::mat4 const *m)
+	{ glUniformMatrix4fv(loc, count, false, reinterpret_cast<float const*>(m)); }
 };
 
 };

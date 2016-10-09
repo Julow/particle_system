@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 19:48:59 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/09 19:35:49 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -182,7 +182,7 @@ GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
 
 #include "gl_utils.hpp"
 
-template<size_t SIZE, typename T>
+template<typename T, size_t SIZE = 1>
 class	GlUniform
 {
 public:
@@ -197,17 +197,17 @@ public:
 
 	GLuint			get_location() { return (_loc); }
 
-	// only if SIZE == 1
+	template<bool DUMMY = true,
+		typename = std::enable_if_t<SIZE == 1 && DUMMY>>
 	void			operator=(T const &v)
 	{
-		gl_utils::gl_type<T>::uniform_write(_loc, 1, (float const*)&v);
+		gl_utils::gl_type<T>::uniform_write(_loc, 1, &v);
 	}
 
-	// SIZE > 1
-	// void			operator=(T const *v)
-	// {
-	// 	gl_utils::gl_type<T>::uniform_write(_loc, SIZE, v);
-	// }
+	void			operator=(T const *v)
+	{
+		gl_utils::gl_type<T>::uniform_write(_loc, SIZE, v);
+	}
 
 private:
 	GLuint			_loc;
@@ -220,7 +220,6 @@ private:
 	GlUniform		&operator=(GlUniform const &rhs) = delete;
 };
 
-
 /*
 ** ========================================================================== **
 */
@@ -230,6 +229,7 @@ private:
 #include "particule.cl.h"
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
@@ -238,16 +238,19 @@ public:
 		GlfwWindowProxy(500, 500, "lol"),
 		ClContextProxy(),
 
-		particule_count(3),
+		particule_count(4),
 
 		_particule_program(get_program(get_context(),
 				"#include \"/Volumes/Storage/goinfre/jaguillo/particle_system/srcs/main/particule.cl.h\"\n"
+				"__constant static float const	x[] = {-0.6, -0.3, 0, 0.3, 0.6};"
+				""
 				"__kernel void		init(__global particule *buff)"
 				"{"
 				"	particule		p;"
+				"	uint const		id = get_global_id(0);"
 				""
-				"	p.pos = (vec3){0.f, 0.f, 0.f};"
-				"	p.color = (vec3){1.f, 0.f, 0.f};"
+				"	p.pos = (vec3){x[id], 0.f, 0.f};"
+				"	p.color = (vec3){id/4.f, 0.f, 0.f};"
 				"	buff[get_global_id(0)] = p;"
 				"}"
 			)),
@@ -260,14 +263,17 @@ public:
 					"layout (location = 0) in vec3		buff_pos;"
 					"layout (location = 1) in vec3		buff_color;"
 					""
+					"uniform mat4	u_m_proj;"
+					"uniform mat4	u_m_view;"
+					""
 					"out vec3		p_color;"
 					""
 					"void		main()"
 					"{"
 					"	p_color = buff_color;"
-					"	gl_Position = vec4(0.f, 0.f, 0.f, 0.f);"
-					// "	gl_Position = vec4(buff_pos, 0.f);"
 					"	gl_PointSize = 10;"
+					// "	gl_Position = u_m_proj * u_m_view * vec4(vec3(buff_pos), 1.f);"
+					"	gl_Position = vec4(vec3(buff_pos), 1.f);"
 					"}"
 				},
 
@@ -277,23 +283,22 @@ public:
 					"in vec3		p_color;"
 					"out vec4		color;"
 					""
-					"uniform float	test_uniform;"
-					""
 					"void		main()"
 					"{"
-					// "	color = vec4(p_color, 1.f);"
-					"	color = vec4(0.5f, 0.5f, 0.5f, 0.5f);"
+					"	color = vec4(p_color, 1.f);"
 					"}"
 				},
 			})),
 
-		_particules_buffer(get_context(), particule_count),
+		_particules_buffer(get_context(), particule_count, nullptr),
 
-		_test_uniform(_shader_program, "test_uniform")
+		_uniform_m_proj(_shader_program, "u_m_proj"),
+		_uniform_m_view(_shader_program, "u_m_view")
 
 	{
 		glViewport(0, 0, 500, 500);
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_PROGRAM_POINT_SIZE);
 	}
 
 	virtual ~Main() {}
@@ -310,7 +315,8 @@ public:
 				attrib<particule::particule, particule::vec3, &particule::particule::color>
 			>			_particules_buffer;
 
-	GlUniform<1, float>	_test_uniform;
+	GlUniform<glm::mat4>	_uniform_m_proj;
+	GlUniform<glm::mat4>	_uniform_m_view;
 
 	void			loop()
 	{
@@ -322,23 +328,27 @@ public:
 		}
 		clFinish(get_queue());
 
-		_test_uniform = 42;
+		_uniform_m_proj = glm::perspective(42.f, 1.f, 0.01f, 1000.f);
+		_uniform_m_view = glm::lookAt(
+				glm::vec3(0, 0, -1),
+				glm::vec3(0, 0, 0),
+				glm::vec3(0, 1, 0)
+			);
 
-		glfwPollEvents();
 		while (!glfwWindowShouldClose(get_window()))
 		{
 			glClearColor(0.f, 0.6f, 0.6f, 1.f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glUseProgram(_shader_program);
-			glBindBuffer(GL_ARRAY_BUFFER, _particules_buffer.get_gl_handle());
+			glBindVertexArray(_particules_buffer.get_gl_handle());
 			glDrawArrays(GL_POINTS, 0, particule_count);
-
-			glFlush();
+			glBindVertexArray(0);
 
 			glfwSwapBuffers(get_window());
 			glfwPollEvents();
 		}
+
 	}
 
 private:
