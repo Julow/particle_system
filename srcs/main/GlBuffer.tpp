@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:49:46 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 19:12:22 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/09 18:44:36 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -20,23 +20,27 @@ GlBuffer<T, ATT...>::GlBuffer(size_t size, T const *data)
 {
 	unsigned		i;
 
-	glGenBuffers(1, &_handle);
-	glBindBuffer(GL_ARRAY_BUFFER, _handle);
+	glGenVertexArrays(1, &_vao);
+	glGenBuffers(1, &_vbo);
+	glBindVertexArray(_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 	glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data, GL_STATIC_DRAW);
 	i = 0;
 	(void)(int[]){(_init_attrib<ATT>(i++), 0)...};
+	glBindVertexArray(0);
 }
 
 template<typename T, typename ...ATT>
 GlBuffer<T, ATT...>::~GlBuffer()
 {
-	glDeleteBuffers(1, &_handle);
+	glDeleteBuffers(1, &_vbo);
+	glDeleteVertexArrays(1, &_vao);
 }
 
 template<typename T, typename ...ATT>
 GLuint			GlBuffer<T, ATT...>::get_handle()
 {
-	return (_handle);
+	return (_vao);
 }
 
 template<typename T, typename ...ATT>

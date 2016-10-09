@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:48:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 18:01:37 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/09 19:30:33 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -41,7 +41,8 @@ public:
 	GLuint			get_handle();
 
 private:
-	GLuint			_handle;
+	GLuint			_vao;
+	GLuint			_vbo;
 
 	template<typename ATTR>
 	void			_init_attrib(unsigned index);
