@@ -6,13 +6,14 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 14:59:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/06 17:20:54 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 11:57:15 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef F_HPP
 # define F_HPP
 
+#include <cxxabi.h>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -54,17 +55,44 @@ void			f_loop(std::ostream &out, char const *format)
 static inline
 void			f_loop_end(std::ostream &) {}
 
+template<typename T>
+auto			f_put(std::ostream &out, T &&arg, int)
+		-> decltype(out << arg, void())
+{
+	out << arg;
+}
+
+template<typename T>
+void			f_put(std::ostream &out, T&&, long)
+{
+	char const *const	type_str = typeid(T).name();
+	char *const			demangled = abi::__cxa_demangle(type_str,
+							nullptr, nullptr, nullptr);
+
+	out << '<';
+	if (demangled != nullptr)
+	{
+		out << demangled;
+		free(demangled);
+	}
+	else
+	{
+		out << type_str;
+	}
+	out << '>';
+}
+
 template<typename HEAD, typename ...TAIL>
-void			f_loop_end(std::ostream &out, HEAD&& arg, TAIL&& ...tail)
+void			f_loop_end(std::ostream &out, HEAD &&arg, TAIL&& ...tail)
 {
 	out.put(' ');
-	out << arg;
+	f_put(out, std::forward<HEAD>(arg), 0);
 	f_loop_end(out, std::forward<TAIL>(tail)...);
 }
 
 template<typename HEAD, typename ...TAIL>
 void			f_loop(std::ostream &out, char const *format,
-						   HEAD&& arg, TAIL&& ...tail)
+						   HEAD &&arg, TAIL&& ...tail)
 {
 	unsigned const	next = next_fmt(format);
 
@@ -75,7 +103,7 @@ void			f_loop(std::ostream &out, char const *format,
 		f_loop_end(out, std::forward<HEAD>(arg), std::forward<TAIL>(tail)...);
 		return ;
 	}
-	out << arg;
+	f_put(out, std::forward<HEAD>(arg), 0);
 	f_loop(out, format + next + 1, std::forward<TAIL>(tail)...);
 }
 
