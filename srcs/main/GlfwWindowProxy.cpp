@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:48:59 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 19:26:33 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 23:29:34 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -26,6 +26,20 @@ static GLFWwindow	*full_screen_window(char const *title)
 		vidmodes[vidmode_count - 1].height, title, monitor, nullptr));
 }
 
+#ifdef MAC_OS_MODE
+# define INIT_GLEW			true
+# define OPENGL_PROFILE		GLFW_OPENGL_CORE_PROFILE
+#else
+# define INIT_GLEW			(glewInit() == GLEW_OK)
+# define OPENGL_PROFILE		GLFW_OPENGL_COMPAT_PROFILE
+#endif
+#ifdef GLFW_DOUBLEBUFFER
+# define HINT_DOUBLE_BUFFER	true
+#else
+# define GLFW_DOUBLEBUFFER	0
+# define HINT_DOUBLE_BUFFER	false
+#endif
+
 GlfwWindowProxy::GlfwWindowProxy(
 		std::optional<std::pair<unsigned, unsigned>> win_size,
 		char const *title, std::pair<unsigned, unsigned> gl_version)
@@ -33,10 +47,10 @@ GlfwWindowProxy::GlfwWindowProxy(
 	init();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, gl_version.first);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, gl_version.second);
-	// For macos and gl_version >= 3.2:
+	if (HINT_DOUBLE_BUFFER)
+		glfwWindowHint(GLFW_DOUBLEBUFFER, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	// -
+	glfwWindowHint(GLFW_OPENGL_PROFILE, OPENGL_PROFILE);
 	_window = (win_size)
 		? glfwCreateWindow(win_size->first, win_size->second, title, 0, 0)
 		: full_screen_window(title);
@@ -61,6 +75,11 @@ GlfwWindowProxy::GlfwWindowProxy(
 	glfwSetWindowUserPointer(_window, this);
 	glfwMakeContextCurrent(_window);
 	glfwGetFramebufferSize(_window, (int*)&_width, (int*)&_height);
+	if (!INIT_GLEW)
+	{
+		deinit();
+		throw std::runtime_error("Failed to init GLEW");
+	}
 	glViewport(0, 0, _width, _height);
 }
 
@@ -102,7 +121,7 @@ static GlfwWindowProxy	*get_instance(GLFWwindow *w)
 
 void			GlfwWindowProxy::c_cursor_enter(GLFWwindow *w, int entered)
 {
-	if (entered == GLFW_TRUE)
+	if (entered)
 		get_instance(w)->on_cursor_enter();
 	else
 		get_instance(w)->on_cursor_leave();
@@ -149,7 +168,7 @@ void			GlfwWindowProxy::c_win_close(GLFWwindow *w)
 
 void			GlfwWindowProxy::c_win_focus(GLFWwindow *w, int focused)
 {
-	if (focused == GLFW_TRUE)
+	if (focused)
 		get_instance(w)->on_window_focus();
 	else
 		get_instance(w)->on_window_defocus();
@@ -157,7 +176,7 @@ void			GlfwWindowProxy::c_win_focus(GLFWwindow *w, int focused)
 
 void			GlfwWindowProxy::c_win_iconify(GLFWwindow *w, int iconified)
 {
-	if (iconified == GLFW_TRUE)
+	if (iconified)
 		get_instance(w)->on_window_iconify();
 	else
 		get_instance(w)->on_window_restore();

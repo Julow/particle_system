@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 15:57:31 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/06 17:40:05 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 23:30:22 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -14,7 +14,14 @@
 #include "f.hpp"
 
 #include <map>
-#include <OpenGL/OpenGL.h>
+
+#ifdef __APPLE__
+# include <OpenGL/OpenGL.h>
+
+#else
+# include <GL/gl.h>
+
+#endif
 
 static std::map<cl_int, char const*> const	g_cl_errors = {
 	{CL_COMPILER_NOT_AVAILABLE, "CL_COMPILER_NOT_AVAILABLE"},
@@ -95,96 +102,76 @@ static void		cl_error(cl_int err, char const *str)
 	throw std::runtime_error("%: %"_f (str, ClContextProxy::strerror(err)));
 }
 
-#include <iostream>
+#ifdef __APPLE__
 
-// // TODO: check device's opencl version and required extensions
-// static bool		get_device(cl_platform_id platform, cl_device_id &dst)
-// {
-// 	cl_device_type const	type = CL_DEVICE_TYPE_GPU;
-// 	unsigned const			device_count = ({
-// 			cl_uint				count;
-// 			(clGetDeviceIDs(platform, type, 0, nullptr, &count) == CL_SUCCESS) ?
-// 				count : 0;
-// 		});
-// 	cl_device_id			devices[device_count];
+static std::tuple<cl_context, cl_device_id>
+				make_context()
+{
+	auto const		gl_context = CGLGetCurrentContext();
 
-// 	if (device_count == 0 || clGetDeviceIDs(platform, type,
-// 					device_count, devices, nullptr) != CL_SUCCESS)
-// 		return (false);
-// 	dst = devices[0];
-// 	return (true);
-// }
+	_context = clCreateContext((cl_context_properties const[]){
+			CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE,
+				(cl_context_properties)CGLGetShareGroup(gl_context),
+			0
+		}, 0, nullptr, nullptr, nullptr, &err);
+	if (_context == nullptr)
+		cl_error(err, "clCreateContext");
+	err = clGetGLContextInfoAPPLE(_context, gl_context,
+			CL_CGL_DEVICE_FOR_CURRENT_VIRTUAL_SCREEN_APPLE,
+			sizeof(cl_device_id), &device, nullptr);
+	if (device == nullptr)
+		cl_error(err, "clGetGLContextInfoAPPLE");
+}
 
-// static std::tuple<cl_platform_id, cl_device_id>
-// 				get_platform()
-// {
-// 	unsigned const	platform_count = ({
-// 			cl_uint		count;
-// 			clGetPlatformIDs(0, nullptr, &count); count;
-// 		});
-// 	cl_platform_id	platforms[platform_count];
-// 	std::tuple<cl_platform_id, cl_device_id>	res;
+#else
 
-// 	clGetPlatformIDs(platform_count, platforms, nullptr);
-// 	for (auto p : platforms)
-// 	{
-// 		std::get<0>(res) = p;
-// 		if (get_device(p, std::get<1>(res)))
-// 			return (res);
-// 	}
-// 	throw std::runtime_error("No compatible GPU found");
-// }
+# include <CL/cl_gl.h>
+# include <GL/glx.h>
 
-// static cl_platform_id	get_first_platform()
-// {
-// 	unsigned const	platform_count = ({
-// 			cl_uint		count;
-// 			clGetPlatformIDs(0, nullptr, &count); count;
-// 		});
-// 	cl_platform_id	platforms[platform_count];
+static std::tuple<cl_context, cl_device_id>
+				make_context()
+{
+	unsigned const	platform_count = ({
+			cl_uint		count;
+			clGetPlatformIDs(0, nullptr, &count); count;
+		});
+	cl_platform_id	platforms[platform_count];
+	cl_context		context;
+	cl_device_id	device;
+	cl_int			err;
 
-// 	if (platform_count == 0)
-// 		throw std::runtime_error("No platform");
-// 	clGetPlatformIDs(platform_count, platforms, nullptr);
-// 	return (platforms[0]);
-// }
+	clGetPlatformIDs(platform_count, platforms, NULL);
+	for (cl_platform_id platform : platforms)
+	{
+		cl_context_properties const	props[] = {
+			CL_CONTEXT_PLATFORM, (cl_context_properties)platform,
+			CL_GL_CONTEXT_KHR, (cl_context_properties)glXGetCurrentContext(),
+			CL_GLX_DISPLAY_KHR, (cl_context_properties)glXGetCurrentDisplay(),
+			0
+		};
+
+		err = clGetGLContextInfoKHR(props, CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR,
+			sizeof(device), &device, nullptr);
+		if (err != CL_SUCCESS)
+			continue ;
+		context = clCreateContext(props, 1, &device, nullptr, nullptr, nullptr);
+		if (context == nullptr)
+			continue ;
+		return (std::make_tuple(context, device));
+	}
+	if (err == CL_SUCCESS)
+		throw std::runtime_error("No platform");
+	cl_error(err, "make_context");
+}
+
+#endif
 
 ClContextProxy::ClContextProxy()
 {
 	cl_device_id	device;
 	cl_int			err;
 
-	// cl_platform_id	platform;
-	// std::tie(platform, device) = get_platform();
-	// _context = clCreateContext((cl_context_properties[]){
-	// 		CL_CONTEXT_PLATFORM, (cl_context_properties)platform,
-	// 		CL_GL_CONTEXT_KHR, (cl_context_properties)gl_context,
-	// 		CL_CGL_SHAREGROUP_KHR, (cl_context_properties)CGLGetShareGroup(gl_context),
-
-	// 		0
-	// 	}, 1, &device, nullptr, nullptr, &err);
-
-	// -
-
-	auto const		gl_context = CGLGetCurrentContext();
-
-	_context = clCreateContext((cl_context_properties const[]){
-			CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE,
-				(cl_context_properties)CGLGetShareGroup(gl_context),
-			// CL_CONTEXT_PLATFORM, (cl_context_properties)get_first_platform(),
-			0
-		}, 0, NULL, NULL, NULL, &err);
-	if (_context == nullptr)
-		cl_error(err, "clCreateContext");
-
-	err = clGetGLContextInfoAPPLE(_context, gl_context,
-			CL_CGL_DEVICE_FOR_CURRENT_VIRTUAL_SCREEN_APPLE,
-			sizeof(cl_device_id), &device, NULL);
-	if (device == nullptr)
-		cl_error(err, "clGetGLContextInfoAPPLE");
-
-	// -
-
+	std::tie(_context, device) = make_context();
 	if ((_queue = clCreateCommandQueue(_context, device, 0, &err)) == nullptr)
 	{
 		clReleaseContext(_context);

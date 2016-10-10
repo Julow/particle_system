@@ -6,12 +6,14 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 18:06:29 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 23:14:32 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef CLGLBUFFER_TPP
 # define CLGLBUFFER_TPP
+
+# include <CL/cl_gl.h>
 
 template<typename T, typename ...ATT>
 ClGlBuffer<T, ATT...>::ClGlBuffer(cl_context c, size_t size, T const *data)
