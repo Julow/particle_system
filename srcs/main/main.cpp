@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 18:11:07 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 20:06:05 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -237,13 +237,14 @@ class	Main final : GlfwWindowProxy, ClContextProxy
 {
 public:
 	Main() :
-		GlfwWindowProxy(500, 500, "lol"),
+		GlfwWindowProxy(std::nullopt, "lol"),
 		ClContextProxy(),
 
-		particule_count(50),
+		particule_count(500000),
 
 		_particule_program(get_program(get_context(), cl_program_particle)),
-		_init_kernel(_particule_program, "init"),
+		_init_square_kernel(_particule_program, "init_square"),
+		_init_sphere_kernel(_particule_program, "init_sphere"),
 		_update_kernel(_particule_program, "update"),
 
 		_shader_program(get_shaders({
@@ -261,7 +262,7 @@ public:
 					"void		main()"
 					"{"
 					"	p_color = buff_color;"
-					"	gl_PointSize = 5;"
+					"	gl_PointSize = 1;"
 					// "	gl_Position = u_m_proj * u_m_view * vec4(buff_pos, 1.f);"
 					"	gl_Position = buff_pos;"
 					"}"
@@ -287,7 +288,6 @@ public:
 		// _uniform_m_view(_shader_program, "u_m_view")
 
 	{
-		glViewport(0, 0, 500, 500);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_PROGRAM_POINT_SIZE);
 	}
@@ -297,7 +297,8 @@ public:
 	unsigned const		particule_count;
 
 	cl_program				_particule_program;
-	ClKernel<cl_mem>		_init_kernel;
+	ClKernel<cl_mem>		_init_square_kernel;
+	ClKernel<cl_mem>		_init_sphere_kernel;
 	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
 
 	GLuint				_shader_program;
@@ -315,7 +316,8 @@ public:
 		{ // init particules
 			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
 
-			_init_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+			_init_square_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+			// _init_sphere_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
 		}
 		clFinish(get_queue());
 
@@ -338,7 +340,7 @@ public:
 			}
 			clFinish(get_queue());
 
-			glClearColor(0.f, 0.6f, 0.6f, 1.f);
+			glClearColor(0.f, 0.f, 0.f, 1.f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glUseProgram(_shader_program);
