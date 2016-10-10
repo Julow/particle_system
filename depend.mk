@@ -1,3 +1,4 @@
+O_FILES += $(O_DIR)/srcs/main/particle.cl.o
 INCLUDE_FLAGS += -I$(O_DIR)/_public
 MAINS += particle_system
 OBJ_DIR_TREE += $(O_DIR)/srcs/main/ $(O_DIR)/srcs/ $(O_DIR)/_public/ft/ \
@@ -42,3 +43,7 @@ $(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += -Isrcs/main
 # public links
 $(O_DIR)/_public/ft/cl.h: srcs/ft_cl/cl.h
 $(O_DIR)/_public/ft/gl.h: libft/ft_gl/gl.h
+
+$(O_DIR)/srcs/main/particle.cl.o: $(O_DIR)/srcs/main/particle.cl.c
+$(O_DIR)/srcs/main/particle.cl.c: srcs/main/particle.cl
+	./cl_gen.py "$<" "$@"

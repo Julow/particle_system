@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 16:48:33 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 18:11:07 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -231,6 +231,8 @@ private:
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+extern char const *const	cl_program_particle;
+
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
 public:
@@ -240,41 +242,7 @@ public:
 
 		particule_count(50),
 
-		_particule_program(get_program(get_context(),
-				"#include \"/Volumes/Storage/goinfre/jaguillo/particle_system/srcs/main/particule.cl.h\"\n"
-				"__kernel void		init(__global particule *buff, uint total)\n"
-				"{\n"
-				"	particule		p;\n"
-				"	uint const		id = get_global_id(0);\n"
-				"	float const		w = id / (float)(total - 1);\n"
-				"\n"
-				"	p.pos = (float4){mix(-1.f, 1.f, w), 0.f, 0.f, 1.f};\n"
-				"	p.color = (float4){w, 0.f, 0.f, 1.f};\n"
-				"	p.velocity = (float4){0.f, 0.f, 0.f, 0.f};\n"
-				"	p.mass = 1.f;"
-				"	buff[get_global_id(0)] = p;\n"
-				"}\n"
-				"\n"
-
-				"__kernel void		update(__global particule *buff, \n"
-				"						float4 center, float delta_t)\n"
-				"{\n"
-				"	uint const			id = get_global_id(0);\n"
-				"	float const			G = 10.f;\n"
-				"	float const			center_mass = 100.f;\n"
-
-				"	float4 const		r_diff = center - buff[id].pos;"
-				"	float const			r_sq = dot(r_diff, r_diff);\n"
-				"	float const			force = buff[id].mass * center_mass / ("
-				"							max(1.f, r_sq)" // TODO: fix
-				"							) * G;\n"
-
-				"	float const			delta_v = force / buff[id].mass * delta_t;\n"
-				"	buff[id].velocity += (r_diff / length(r_diff)) * delta_v;\n"
-
-				"	buff[id].pos += buff[id].velocity * delta_t;"
-				"}\n"
-			)),
+		_particule_program(get_program(get_context(), cl_program_particle)),
 		_init_kernel(_particule_program, "init"),
 		_update_kernel(_particule_program, "update"),
 
@@ -328,8 +296,8 @@ public:
 
 	unsigned const		particule_count;
 
-	cl_program					_particule_program;
-	ClKernel<cl_mem, cl_uint>	_init_kernel;
+	cl_program				_particule_program;
+	ClKernel<cl_mem>		_init_kernel;
 	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
 
 	GLuint				_shader_program;
@@ -347,8 +315,7 @@ public:
 		{ // init particules
 			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
 
-			_init_kernel.make_work<1>(particule_count)
-					(get_queue(), p_buffer.get_handle(), particule_count);
+			_init_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
 		}
 		clFinish(get_queue());
 

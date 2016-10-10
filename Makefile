@@ -27,7 +27,7 @@ export DEBUG_MODE
 # Compilers
 CC				= clang
 CXX				= clang++ -std=c++1y
-LINKER			= $(CC)
+LINKER			= $(CXX)
 
 # Objects directory
 O_DIR			:= _objs
@@ -65,7 +65,8 @@ $(O_DIR)/%.o: %.c
 	$(CC) $(C_FLAGS) -c $< -o $@ && $(PRINT_OK)
 $(O_DIR)/%.o: %.cpp
 	$(CXX) $(CPP_FLAGS) -c $< -o $@ && $(PRINT_OK)
-	$(eval LINKER = $(CXX))
+$(O_DIR)/%.o: $(O_DIR)/%.c
+	$(CC) $(C_FLAGS) -c $< -o $@ && $(PRINT_OK)
 
 # Init submodules
 $(SUBMODULE_RULES):
