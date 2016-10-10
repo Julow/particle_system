@@ -6,15 +6,17 @@
 //   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/07 00:21:51 by juloo             #+#    #+#             //
-//   Updated: 2016/10/07 10:46:47 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 19:14:26 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef OPT_HPP
 # define OPT_HPP
 
-# include <optional>
 # include <type_traits>
+# include <experimental/optional>
+
+namespace std { using namespace experimental; };
 
 template<typename T, typename T2 = void>
 struct	is_optional : std::false_type {};

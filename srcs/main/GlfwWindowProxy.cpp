@@ -6,14 +6,28 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:48:59 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/07 19:23:02 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 19:26:33 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #include "GlfwWindowProxy.hpp"
 #include <stdexcept>
 
-GlfwWindowProxy::GlfwWindowProxy(unsigned width, unsigned height,
+static GLFWwindow	*full_screen_window(char const *title)
+{
+	GLFWmonitor *const	monitor = glfwGetPrimaryMonitor();
+	int					vidmode_count;
+	GLFWvidmode const	*vidmodes;
+
+	vidmodes = glfwGetVideoModes(monitor, &vidmode_count);
+	if (vidmode_count == 0)
+		return (nullptr);
+	return (glfwCreateWindow(vidmodes[vidmode_count - 1].width,
+		vidmodes[vidmode_count - 1].height, title, monitor, nullptr));
+}
+
+GlfwWindowProxy::GlfwWindowProxy(
+		std::optional<std::pair<unsigned, unsigned>> win_size,
 		char const *title, std::pair<unsigned, unsigned> gl_version)
 {
 	init();
@@ -23,8 +37,10 @@ GlfwWindowProxy::GlfwWindowProxy(unsigned width, unsigned height,
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	// -
-	_window = glfwCreateWindow(width, height, title, NULL, NULL);
-	if (_window == NULL)
+	_window = (win_size)
+		? glfwCreateWindow(win_size->first, win_size->second, title, 0, 0)
+		: full_screen_window(title);
+	if (_window == nullptr)
 	{
 		deinit();
 		throw std::runtime_error("Failed to create window");
@@ -44,6 +60,8 @@ GlfwWindowProxy::GlfwWindowProxy(unsigned width, unsigned height,
 			&GlfwWindowProxy::c_win_framebuffer_size);
 	glfwSetWindowUserPointer(_window, this);
 	glfwMakeContextCurrent(_window);
+	glfwGetFramebufferSize(_window, (int*)&_width, (int*)&_height);
+	glViewport(0, 0, _width, _height);
 }
 
 GlfwWindowProxy::~GlfwWindowProxy()
@@ -52,10 +70,10 @@ GlfwWindowProxy::~GlfwWindowProxy()
 	deinit();
 }
 
-GLFWwindow		*GlfwWindowProxy::get_window()
-{
-	return (_window);
-}
+GLFWwindow		*GlfwWindowProxy::get_window() { return (_window); }
+
+unsigned		GlfwWindowProxy::get_window_width() { return (_width); }
+unsigned		GlfwWindowProxy::get_window_height() { return (_height); }
 
 void			GlfwWindowProxy::init()
 {
