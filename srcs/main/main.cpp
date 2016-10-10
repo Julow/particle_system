@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/09 19:35:49 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 16:48:33 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -238,62 +238,85 @@ public:
 		GlfwWindowProxy(500, 500, "lol"),
 		ClContextProxy(),
 
-		particule_count(4),
+		particule_count(50),
 
 		_particule_program(get_program(get_context(),
 				"#include \"/Volumes/Storage/goinfre/jaguillo/particle_system/srcs/main/particule.cl.h\"\n"
-				"__constant static float const	x[] = {-0.6, -0.3, 0, 0.3, 0.6};"
-				""
-				"__kernel void		init(__global particule *buff)"
-				"{"
-				"	particule		p;"
-				"	uint const		id = get_global_id(0);"
-				""
-				"	p.pos = (vec3){x[id], 0.f, 0.f};"
-				"	p.color = (vec3){id/4.f, 0.f, 0.f};"
-				"	buff[get_global_id(0)] = p;"
-				"}"
+				"__kernel void		init(__global particule *buff, uint total)\n"
+				"{\n"
+				"	particule		p;\n"
+				"	uint const		id = get_global_id(0);\n"
+				"	float const		w = id / (float)(total - 1);\n"
+				"\n"
+				"	p.pos = (float4){mix(-1.f, 1.f, w), 0.f, 0.f, 1.f};\n"
+				"	p.color = (float4){w, 0.f, 0.f, 1.f};\n"
+				"	p.velocity = (float4){0.f, 0.f, 0.f, 0.f};\n"
+				"	p.mass = 1.f;"
+				"	buff[get_global_id(0)] = p;\n"
+				"}\n"
+				"\n"
+
+				"__kernel void		update(__global particule *buff, \n"
+				"						float4 center, float delta_t)\n"
+				"{\n"
+				"	uint const			id = get_global_id(0);\n"
+				"	float const			G = 10.f;\n"
+				"	float const			center_mass = 100.f;\n"
+
+				"	float4 const		r_diff = center - buff[id].pos;"
+				"	float const			r_sq = dot(r_diff, r_diff);\n"
+				"	float const			force = buff[id].mass * center_mass / ("
+				"							max(1.f, r_sq)" // TODO: fix
+				"							) * G;\n"
+
+				"	float const			delta_v = force / buff[id].mass * delta_t;\n"
+				"	buff[id].velocity += (r_diff / length(r_diff)) * delta_v;\n"
+
+				"	buff[id].pos += buff[id].velocity * delta_t;"
+				"}\n"
 			)),
 		_init_kernel(_particule_program, "init"),
+		_update_kernel(_particule_program, "update"),
 
 		_shader_program(get_shaders({
 				{GL_VERTEX_SHADER,
 					"#version 410 core\n"
 					""
-					"layout (location = 0) in vec3		buff_pos;"
-					"layout (location = 1) in vec3		buff_color;"
+					"layout (location = 0) in vec4		buff_pos;"
+					"layout (location = 1) in vec4		buff_color;"
 					""
-					"uniform mat4	u_m_proj;"
-					"uniform mat4	u_m_view;"
+					// "uniform mat4	u_m_proj;"
+					// "uniform mat4	u_m_view;"
 					""
-					"out vec3		p_color;"
+					"out vec4		p_color;"
 					""
 					"void		main()"
 					"{"
 					"	p_color = buff_color;"
-					"	gl_PointSize = 10;"
-					// "	gl_Position = u_m_proj * u_m_view * vec4(vec3(buff_pos), 1.f);"
-					"	gl_Position = vec4(vec3(buff_pos), 1.f);"
+					"	gl_PointSize = 5;"
+					// "	gl_Position = u_m_proj * u_m_view * vec4(buff_pos, 1.f);"
+					"	gl_Position = buff_pos;"
 					"}"
 				},
 
 				{GL_FRAGMENT_SHADER,
 					"#version 410 core\n"
 					""
-					"in vec3		p_color;"
+					"in vec4		p_color;"
 					"out vec4		color;"
 					""
 					"void		main()"
 					"{"
-					"	color = vec4(p_color, 1.f);"
+					"	color = p_color;"
+
 					"}"
 				},
 			})),
 
-		_particules_buffer(get_context(), particule_count, nullptr),
+		_particules_buffer(get_context(), particule_count, nullptr)//,
 
-		_uniform_m_proj(_shader_program, "u_m_proj"),
-		_uniform_m_view(_shader_program, "u_m_view")
+		// _uniform_m_proj(_shader_program, "u_m_proj"),
+		// _uniform_m_view(_shader_program, "u_m_view")
 
 	{
 		glViewport(0, 0, 500, 500);
@@ -305,18 +328,19 @@ public:
 
 	unsigned const		particule_count;
 
-	cl_program			_particule_program;
-	ClKernel<cl_mem>	_init_kernel;
+	cl_program					_particule_program;
+	ClKernel<cl_mem, cl_uint>	_init_kernel;
+	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
 
 	GLuint				_shader_program;
 
 	ClGlBuffer<particule::particule,
-				attrib<particule::particule, particule::vec3, &particule::particule::pos>,
-				attrib<particule::particule, particule::vec3, &particule::particule::color>
+				attrib<particule::particule, particule::vec4, &particule::particule::pos>,
+				attrib<particule::particule, particule::vec4, &particule::particule::color>
 			>			_particules_buffer;
 
-	GlUniform<glm::mat4>	_uniform_m_proj;
-	GlUniform<glm::mat4>	_uniform_m_view;
+	// GlUniform<glm::mat4>	_uniform_m_proj;
+	// GlUniform<glm::mat4>	_uniform_m_view;
 
 	void			loop()
 	{
@@ -324,19 +348,29 @@ public:
 			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
 
 			_init_kernel.make_work<1>(particule_count)
-					(get_queue(), p_buffer.get_handle());
+					(get_queue(), p_buffer.get_handle(), particule_count);
 		}
 		clFinish(get_queue());
 
-		_uniform_m_proj = glm::perspective(42.f, 1.f, 0.01f, 1000.f);
-		_uniform_m_view = glm::lookAt(
-				glm::vec3(0, 0, -1),
-				glm::vec3(0, 0, 0),
-				glm::vec3(0, 1, 0)
-			);
+		// _uniform_m_proj = glm::perspective(42.f, 1.f, 0.01f, 1000.f);
+		// _uniform_m_view = glm::lookAt(
+		// 		glm::vec3(0, 0, -1),
+		// 		glm::vec3(0, 0, 0),
+		// 		glm::vec3(0, 1, 0)
+		// 	);
 
 		while (!glfwWindowShouldClose(get_window()))
 		{
+			{ // update particules
+				auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
+
+				_update_kernel.make_work<1>(particule_count)
+						(get_queue(), p_buffer.get_handle(),
+							{{0.f, 0.f, 0.f}}, 0.0005f);
+
+			}
+			clFinish(get_queue());
+
 			glClearColor(0.f, 0.6f, 0.6f, 1.f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

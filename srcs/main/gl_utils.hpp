@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 19:02:11 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/09 17:09:43 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/10 13:52:15 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -43,6 +43,13 @@ struct	gl_type<glm::vec3> : _gl_type<GL_FLOAT, 3>
 {
 	static void		uniform_write(GLint loc, GLsizei count, glm::vec3 const *v)
 	{ glUniform3fv(loc, count, reinterpret_cast<float const*>(v)); }
+};
+
+template<>
+struct	gl_type<glm::vec4> : _gl_type<GL_FLOAT, 3>
+{
+	static void		uniform_write(GLint loc, GLsizei count, glm::vec4 const *v)
+	{ glUniform4fv(loc, count, reinterpret_cast<float const*>(v)); }
 };
 
 template<>

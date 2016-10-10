@@ -6,14 +6,14 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/07 16:22:34 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/08 17:19:44 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/10 14:40:08 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef PARTICULE_CL_H
 # define PARTICULE_CL_H
 
-# ifdef __cplusplus
+# ifndef __OPENCL_C_VERSION__
 
 #  include "ft/cl.h"
 #  include <glm/glm.hpp>
@@ -23,32 +23,27 @@ namespace particule
 
 typedef cl_float			_float;
 
-typedef glm::vec3			vec3;
+typedef glm::vec4			vec4;
 
 static_assert(std::is_same<cl_float, GLfloat>::value, "");
 
 # else
 
-typedef float				_float;
-typedef struct vec3			vec3;
+typedef float4				vec4;
 typedef struct particule	particule;
-
-struct	vec3
-{
-	_float		x;
-	_float		y;
-	_float		z;
-};
 
 # endif
 
 struct	particule
 {
-	vec3		pos;
-	vec3		color;
+	vec4		pos;
+	vec4		color;
+	vec4		velocity;
+	float		mass;
+	float		_pad[3];
 };
 
-# ifdef __cplusplus
+# ifndef __OPENCL_C_VERSION__
 };
 # endif
 
