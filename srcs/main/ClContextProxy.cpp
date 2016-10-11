@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 15:57:31 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 23:30:22 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/11 11:20:19 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -105,22 +105,29 @@ static void		cl_error(cl_int err, char const *str)
 #ifdef __APPLE__
 
 static std::tuple<cl_context, cl_device_id>
-				make_context()
+				make_interop_context()
 {
 	auto const		gl_context = CGLGetCurrentContext();
+	cl_context		context;
+	cl_device_id	device;
+	cl_int			err;
 
-	_context = clCreateContext((cl_context_properties const[]){
+	context = clCreateContext((cl_context_properties const[]){
 			CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE,
 				(cl_context_properties)CGLGetShareGroup(gl_context),
 			0
 		}, 0, nullptr, nullptr, nullptr, &err);
-	if (_context == nullptr)
+	if (context == nullptr)
 		cl_error(err, "clCreateContext");
-	err = clGetGLContextInfoAPPLE(_context, gl_context,
+	err = clGetGLContextInfoAPPLE(context, gl_context,
 			CL_CGL_DEVICE_FOR_CURRENT_VIRTUAL_SCREEN_APPLE,
 			sizeof(cl_device_id), &device, nullptr);
 	if (device == nullptr)
+	{
+		clReleaseContext(context);
 		cl_error(err, "clGetGLContextInfoAPPLE");
+	}
+	return (std::make_tuple(context, device));
 }
 
 #else
@@ -129,7 +136,7 @@ static std::tuple<cl_context, cl_device_id>
 # include <GL/glx.h>
 
 static std::tuple<cl_context, cl_device_id>
-				make_context()
+				make_interop_context()
 {
 	unsigned const	platform_count = ({
 			cl_uint		count;
@@ -156,25 +163,32 @@ static std::tuple<cl_context, cl_device_id>
 			continue ;
 		context = clCreateContext(props, 1, &device, nullptr, nullptr, nullptr);
 		if (context == nullptr)
+		{
+			clReleaseDevice(device);
 			continue ;
+		}
 		return (std::make_tuple(context, device));
 	}
 	if (err == CL_SUCCESS)
 		throw std::runtime_error("No platform");
-	cl_error(err, "make_context");
+	cl_error(err, "make_interop_context");
 }
 
 #endif
 
-ClContextProxy::ClContextProxy()
+ClContextProxy::ClContextProxy(bool gl_interop)
 {
 	cl_device_id	device;
 	cl_int			err;
 
-	std::tie(_context, device) = make_context();
+	if (gl_interop)
+		std::tie(_context, device) = make_interop_context();
+	else
+		throw std::runtime_error("Non-interop ClContextProxy not supported yet");
 	if ((_queue = clCreateCommandQueue(_context, device, 0, &err)) == nullptr)
 	{
 		clReleaseContext(_context);
+		clReleaseDevice(device);
 		cl_error(err, "clCreateCommandQueue");
 	}
 }

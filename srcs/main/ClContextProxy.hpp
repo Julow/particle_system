@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 15:57:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/07 18:35:10 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/11 11:19:35 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -18,11 +18,13 @@
 /*
 ** Proxy to cl_context object initialized with a single GPU device
 **  and it's associated command queue
+** -
+** Support cl/gl interop
 */
 class	ClContextProxy
 {
 public:
-	ClContextProxy();
+	ClContextProxy(bool gl_interop = false);
 
 	virtual ~ClContextProxy();
 

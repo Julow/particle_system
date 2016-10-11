@@ -6,14 +6,17 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 23:14:32 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/11 11:08:43 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef CLGLBUFFER_TPP
 # define CLGLBUFFER_TPP
 
-# include <CL/cl_gl.h>
+# ifndef __APPLE__
+#  include <CL/cl_gl.h>
+
+# endif
 
 template<typename T, typename ...ATT>
 ClGlBuffer<T, ATT...>::ClGlBuffer(cl_context c, size_t size, T const *data)
