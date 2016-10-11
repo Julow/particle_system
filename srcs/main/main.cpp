@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/11 17:43:25 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/11 18:35:10 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -340,7 +340,7 @@ public:
 		ClContextProxy(true),
 		LookAtController(),
 
-		particule_count(100000),
+		particule_count(1000000),
 
 		_particule_program(get_program(get_context(), cl_program_particle)),
 		_init_square_kernel(_particule_program, "init_square"),
@@ -358,6 +358,7 @@ public:
 	{
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_PROGRAM_POINT_SIZE);
+		update_camera();
 	}
 
 	virtual ~Main() {}
@@ -381,6 +382,58 @@ public:
 
 	glm::mat4		_m_proj;
 
+	void			init()
+	{
+		{ // init particules
+			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
+
+			_init_square_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+			// _init_sphere_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+			// _init_cube_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+		}
+		clFinish(get_queue());
+	}
+
+	void			loop()
+	{
+		using std_clock = std::chrono::steady_clock;
+		std::chrono::time_point<std_clock>			last_frame;
+		std::chrono::time_point<std_clock>			now;
+		std::chrono::duration<float, std::ratio<1>>	delta_t;
+
+		last_frame = std_clock::now();
+		while (!glfwWindowShouldClose(get_window()))
+		{
+			glfwPollEvents();
+			glfwSwapBuffers(get_window());
+
+			now = std_clock::now();
+			delta_t = now - last_frame;
+			last_frame = now;
+
+			{ // update particules
+				auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
+
+				_update_kernel.make_work<1>(particule_count)
+						(get_queue(), p_buffer.get_handle(),
+							{{0.f, 0.f, 0.f}}, delta_t.count());
+				clFinish(get_queue());
+			}
+
+			{ // render particles
+				glClearColor(0.f, 0.f, 0.f, 1.f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				glUseProgram(_shader_program);
+				glBindVertexArray(_particules_buffer.get_gl_handle());
+				glDrawArrays(GL_POINTS, 0, particule_count);
+				glBindVertexArray(0);
+			}
+
+			if (LookAtController::update(delta_t.count()))
+				update_camera();
+		}
+	}
+
 	void			update_camera()
 	{
 		glm::mat4 const	m_view = glm::lookAt(
@@ -389,48 +442,6 @@ public:
 				glm::vec3(0.f, 1.f, 0.f));
 
 		_uniform_m_viewproj = _m_proj * m_view;
-	}
-
-	void			loop()
-	{
-		{ // init particules
-			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
-
-			// _init_square_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
-			// _init_sphere_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
-			_init_cube_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
-		}
-		clFinish(get_queue());
-
-		update_camera();
-
-		while (!glfwWindowShouldClose(get_window()))
-		{
-			float		delta_t = 0.005f; // TODO
-
-			{ // update particules
-				auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
-
-				_update_kernel.make_work<1>(particule_count)
-						(get_queue(), p_buffer.get_handle(),
-							{{0.f, 0.f, 0.f}}, delta_t);
-			}
-			clFinish(get_queue());
-
-			glClearColor(0.f, 0.f, 0.f, 1.f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			glUseProgram(_shader_program);
-			glBindVertexArray(_particules_buffer.get_gl_handle());
-			glDrawArrays(GL_POINTS, 0, particule_count);
-			glBindVertexArray(0);
-
-			glfwSwapBuffers(get_window());
-			glfwPollEvents();
-
-			if (LookAtController::update(delta_t))
-				update_camera();
-		}
 	}
 
 	virtual void	on_key_press(int key, int, int)
@@ -479,6 +490,7 @@ int				main()
 		std::cout << "Init error: " << e.what() << std::endl;
 		return (1);
 	}
+	m->init();
 	m->loop();
 	delete m;
 	return (0);
