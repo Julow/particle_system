@@ -6,7 +6,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/10 19:54:33 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/11 12:37:55 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,7 @@ __kernel void		update(__global particule *buff,
 {
 	uint const			id = get_global_id(0);
 	float const			G = 10.f;
-	float const			center_mass = 100.f;
+	float const			center_mass = 1.f;
 
 	float4 const		r_diff = center - buff[id].pos;
 	float const			r_sq = dot(r_diff, r_diff);

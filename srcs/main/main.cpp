@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 20:06:05 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/11 16:00:31 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -182,11 +182,15 @@ GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
 
 #include "gl_utils.hpp"
 
+/*
+** W: Change the current program (glUseProgram)
+*/
 template<typename T, size_t SIZE = 1>
 class	GlUniform
 {
 public:
 	GlUniform(GLuint program, char const *name)
+		: _program(program)
 	{
 		if ((_loc = glGetUniformLocation(program, name)) < 0)
 			throw std::runtime_error("Unknown uniform %"_f(name));
@@ -201,16 +205,19 @@ public:
 		typename = std::enable_if_t<SIZE == 1 && DUMMY>>
 	void			operator=(T const &v)
 	{
+		glUseProgram(_program);
 		gl_utils::gl_type<T>::uniform_write(_loc, 1, &v);
 	}
 
 	void			operator=(T const *v)
 	{
+		glUseProgram(_program);
 		gl_utils::gl_type<T>::uniform_write(_loc, SIZE, v);
 	}
 
 private:
 	GLuint			_loc;
+	GLuint			_program;
 
 private:
 	GlUniform() = delete;
@@ -218,6 +225,70 @@ private:
 	GlUniform(GlUniform const &src) = delete;
 	GlUniform		&operator=(GlUniform &&rhs) = delete;
 	GlUniform		&operator=(GlUniform const &rhs) = delete;
+};
+
+/*
+** ========================================================================== **
+** LookAtController
+*/
+
+class	LookAtController
+{
+public:
+	enum flag
+	{
+		UP = 1 << 0,
+		RIGHT = 1 << 1,
+		DOWN = 1 << 2,
+		LEFT = 1 << 3,
+	};
+
+	LookAtController()
+		: _flags(0), _look_at(0.f, M_PI/2.f)
+	{}
+
+	virtual ~LookAtController() {}
+
+	void				press(flag k) { _flags |= k; }
+	void				release(flag k) { _flags &= ~k; }
+
+	glm::vec3			get_look_at() const
+	{
+		return (glm::vec3(
+				cos(_look_at.x) * cos(_look_at.y),
+				sin(_look_at.x),
+				cos(_look_at.x) * sin(-_look_at.y)
+			));
+	}
+
+	bool				update(float delta_t)
+	{
+		glm::vec2			d(0.f, 0.f);
+
+		if (!(_flags & (UP | RIGHT | DOWN | LEFT)))
+			return (false);
+		if (_flags & UP)
+			d.x += 1.f;
+		else if (_flags & RIGHT)
+			d.y -= 1.f;
+		else if (_flags & DOWN)
+			d.x -= 1.f;
+		else if (_flags & LEFT)
+			d.y += 1.f;
+		_look_at += d * delta_t;
+		return (true);
+	}
+
+private:
+	unsigned			_flags;
+
+	glm::vec2			_look_at;
+
+private:
+	LookAtController(LookAtController &&src) = delete;
+	LookAtController(LookAtController const &src) = delete;
+	LookAtController	&operator=(LookAtController &&rhs) = delete;
+	LookAtController	&operator=(LookAtController const &rhs) = delete;
 };
 
 /*
@@ -233,59 +304,55 @@ private:
 
 extern char const *const	cl_program_particle;
 
-class	Main final : GlfwWindowProxy, ClContextProxy
+std::vector<shader_info>	gl_program_particle = {
+	{GL_VERTEX_SHADER,
+		"#version 410 core\n"
+		""
+		"layout (location = 0) in vec4		buff_pos;"
+		"layout (location = 1) in vec4		buff_color;"
+		""
+		"uniform mat4	u_m_viewproj;"
+		""
+		"out vec4		p_color;"
+		""
+		"void		main()"
+		"{"
+		"	p_color = buff_color;"
+		"	gl_PointSize = 1;"
+		"	gl_Position = u_m_viewproj * buff_pos;"
+		// "	gl_Position = buff_pos;"
+		"}"
+	},
+
+	{GL_FRAGMENT_SHADER,
+		"#version 410 core\n"
+		"in vec4		p_color;"
+		"out vec4		color;"
+		"void		main() { color = p_color; }"
+	},
+};
+
+class	Main final : GlfwWindowProxy, ClContextProxy, LookAtController
 {
 public:
 	Main() :
 		GlfwWindowProxy(std::nullopt, "lol"),
-		ClContextProxy(),
+		ClContextProxy(true),
+		LookAtController(),
 
-		particule_count(500000),
+		particule_count(100000),
 
 		_particule_program(get_program(get_context(), cl_program_particle)),
 		_init_square_kernel(_particule_program, "init_square"),
 		_init_sphere_kernel(_particule_program, "init_sphere"),
 		_update_kernel(_particule_program, "update"),
 
-		_shader_program(get_shaders({
-				{GL_VERTEX_SHADER,
-					"#version 410 core\n"
-					""
-					"layout (location = 0) in vec4		buff_pos;"
-					"layout (location = 1) in vec4		buff_color;"
-					""
-					// "uniform mat4	u_m_proj;"
-					// "uniform mat4	u_m_view;"
-					""
-					"out vec4		p_color;"
-					""
-					"void		main()"
-					"{"
-					"	p_color = buff_color;"
-					"	gl_PointSize = 1;"
-					// "	gl_Position = u_m_proj * u_m_view * vec4(buff_pos, 1.f);"
-					"	gl_Position = buff_pos;"
-					"}"
-				},
+		_shader_program(get_shaders(gl_program_particle)),
+		_uniform_m_viewproj(_shader_program, "u_m_viewproj"),
 
-				{GL_FRAGMENT_SHADER,
-					"#version 410 core\n"
-					""
-					"in vec4		p_color;"
-					"out vec4		color;"
-					""
-					"void		main()"
-					"{"
-					"	color = p_color;"
+		_particules_buffer(get_context(), particule_count, nullptr),
 
-					"}"
-				},
-			})),
-
-		_particules_buffer(get_context(), particule_count, nullptr)//,
-
-		// _uniform_m_proj(_shader_program, "u_m_proj"),
-		// _uniform_m_view(_shader_program, "u_m_view")
+		_m_proj(glm::perspective(42.f, 1.f, 0.01f, 1000.f))
 
 	{
 		glEnable(GL_DEPTH_TEST);
@@ -303,13 +370,24 @@ public:
 
 	GLuint				_shader_program;
 
+	GlUniform<glm::mat4>	_uniform_m_viewproj;
+
 	ClGlBuffer<particule::particule,
 				attrib<particule::particule, particule::vec4, &particule::particule::pos>,
 				attrib<particule::particule, particule::vec4, &particule::particule::color>
 			>			_particules_buffer;
 
-	// GlUniform<glm::mat4>	_uniform_m_proj;
-	// GlUniform<glm::mat4>	_uniform_m_view;
+	glm::mat4		_m_proj;
+
+	void			update_camera()
+	{
+		glm::mat4 const	m_view = glm::lookAt(
+				LookAtController::get_look_at(),
+				glm::vec3(0.f, 0.f, 0.f),
+				glm::vec3(0.f, 1.f, 0.f));
+
+		_uniform_m_viewproj = _m_proj * m_view;
+	}
 
 	void			loop()
 	{
@@ -321,22 +399,18 @@ public:
 		}
 		clFinish(get_queue());
 
-		// _uniform_m_proj = glm::perspective(42.f, 1.f, 0.01f, 1000.f);
-		// _uniform_m_view = glm::lookAt(
-		// 		glm::vec3(0, 0, -1),
-		// 		glm::vec3(0, 0, 0),
-		// 		glm::vec3(0, 1, 0)
-		// 	);
+		update_camera();
 
 		while (!glfwWindowShouldClose(get_window()))
 		{
+			float		delta_t = 0.005f; // TODO
+
 			{ // update particules
 				auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
 
 				_update_kernel.make_work<1>(particule_count)
 						(get_queue(), p_buffer.get_handle(),
-							{{0.f, 0.f, 0.f}}, 0.0005f);
-
+							{{0.f, 0.f, 0.f}}, delta_t);
 			}
 			clFinish(get_queue());
 
@@ -350,17 +424,43 @@ public:
 
 			glfwSwapBuffers(get_window());
 			glfwPollEvents();
-		}
 
+			if (LookAtController::update(delta_t))
+				update_camera();
+		}
+	}
+
+	virtual void	on_key_press(int key, int, int)
+	{
+		auto const		f = _keys.find(key);
+
+		if (f != _keys.end())
+			LookAtController::press(f->second);
+	}
+
+	virtual void	on_key_release(int key, int, int)
+	{
+		auto const		f = _keys.find(key);
+
+		if (f != _keys.end())
+			LookAtController::release(f->second);
 	}
 
 private:
+	static std::map<int, LookAtController::flag> const	_keys;
 
 private:
 	Main(Main &&src) = delete;
 	Main(Main const &src) = delete;
 	Main			&operator=(Main &&rhs) = delete;
 	Main			&operator=(Main const &rhs) = delete;
+};
+
+std::map<int, LookAtController::flag> const	Main::_keys = {
+	{265, LookAtController::UP},
+	{262, LookAtController::RIGHT},
+	{264, LookAtController::DOWN},
+	{263, LookAtController::LEFT},
 };
 
 int				main()
