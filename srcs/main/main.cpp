@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/11 16:00:31 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/11 17:43:25 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -345,6 +345,7 @@ public:
 		_particule_program(get_program(get_context(), cl_program_particle)),
 		_init_square_kernel(_particule_program, "init_square"),
 		_init_sphere_kernel(_particule_program, "init_sphere"),
+		_init_cube_kernel(_particule_program, "init_cube"),
 		_update_kernel(_particule_program, "update"),
 
 		_shader_program(get_shaders(gl_program_particle)),
@@ -366,6 +367,7 @@ public:
 	cl_program				_particule_program;
 	ClKernel<cl_mem>		_init_square_kernel;
 	ClKernel<cl_mem>		_init_sphere_kernel;
+	ClKernel<cl_mem>		_init_cube_kernel;
 	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
 
 	GLuint				_shader_program;
@@ -394,8 +396,9 @@ public:
 		{ // init particules
 			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
 
-			_init_square_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+			// _init_square_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
 			// _init_sphere_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
+			_init_cube_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
 		}
 		clFinish(get_queue());
 

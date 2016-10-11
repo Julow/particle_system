@@ -6,7 +6,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/11 12:37:55 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/11 18:11:15 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,8 +30,8 @@ __kernel void		init_square(__global particule *buff)
 
 	_init_particle(buff + id);
 	buff[id].pos = (float4){
-		mix(-1.f, 1.f, (id % per_line) / (float)per_line),
-		mix(-1.f, 1.f, (id / per_line) / (float)per_line),
+		(id % per_line) / (float)per_line * 2.f - 1.f,
+		(id / per_line) / (float)per_line * 2.f - 1.f,
 		0.f,
 		1.f
 	};
@@ -49,6 +49,25 @@ __kernel void		init_sphere(__global particule *buff)
 	r = sqrt(1.f - pow(y, 2.f));
 	phi = (id % global_size) * M_PI * (3.f - sqrt(5.f));
 	buff[id].pos = (float4){cos(phi) * r, y, sin(phi) * r, 1.f};
+}
+
+__kernel void		init_cube(__global particule *buff)
+{
+	uint const		id = get_global_id(0);
+	uint const		per_line = sqrt((float)get_global_size(0));
+	uint const		side = id % 3;
+	float3			tmp;
+
+	_init_particle(buff + id);
+	tmp.x = (id % per_line) / (float)per_line * 2.f - 1.f;
+	tmp.y = (id / per_line) / (float)per_line * 2.f - 1.f;
+	tmp.z = ((id % 6) >= 3) ? -1.f : 1.f;
+	if (side == 0)
+		buff[id].pos = (float4){tmp.x, tmp.y, tmp.z, 1.f};
+	else if (side == 1)
+		buff[id].pos = (float4){tmp.x, tmp.z, tmp.y, 1.f};
+	else
+		buff[id].pos = (float4){tmp.z, tmp.y, tmp.x, 1.f};
 }
 
 __kernel void		update(__global particule *buff, 
