@@ -29,13 +29,13 @@ endif
 $(O_DIR)/srcs/main/ClContextProxy.o: srcs/main/ClContextProxy.cpp \
 	srcs/ft_cl/cl.h srcs/main/ClContextProxy.hpp srcs/main/f.hpp
 $(O_DIR)/srcs/main/GlfwWindowProxy.o: srcs/main/GlfwWindowProxy.cpp \
-	libft/ft_gl/gl.h srcs/main/GlfwWindowProxy.hpp
+	libft/ft_gl/gl.h srcs/main/GlfwWindowProxy.hpp srcs/main/opt.hpp
 $(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
 	srcs/main/ClContextProxy.hpp srcs/main/ClGlBuffer.hpp \
 	srcs/main/ClGlBuffer.tpp srcs/main/ClKernel.hpp srcs/main/ClKernel.tpp \
-	srcs/main/GlBuffer.hpp srcs/main/GlBuffer.tpp \
-	srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp srcs/main/gl_utils.hpp \
-	srcs/main/particule.cl.h
+	srcs/main/FpsCounter.hpp srcs/main/FpsCounter.tpp srcs/main/GlBuffer.hpp \
+	srcs/main/GlBuffer.tpp srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp \
+	srcs/main/gl_utils.hpp srcs/main/opt.hpp srcs/main/particule.cl.h
 
 $(O_DIR)/srcs/main/ClContextProxy.o $(O_DIR)/srcs/main/GlfwWindowProxy.o \
 $(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += -Isrcs/main
