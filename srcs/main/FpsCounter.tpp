@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/12 17:38:53 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/12 17:45:35 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/12 20:04:17 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -59,12 +59,14 @@ template<typename C, unsigned R>
 std::tuple<float, float, float>
 			FpsCounter<C, R>::get_stats() const
 {
-	std::chrono::duration<float, std::ratio<1>>	min_t, max_t, total_t;
-	unsigned		count;
+	using sec_duration = std::chrono::duration<float, std::ratio<1>>;
+	sec_duration	min_t;
+	sec_duration	max_t;
+	sec_duration	total_t{};
+	unsigned		count{};
 
 	min_t = _frames[0].min_t;
 	max_t = _frames[0].max_t;
-	count = 0;
 	for (frame const &f : _frames)
 	{
 		if (min_t > f.min_t) min_t = f.min_t;

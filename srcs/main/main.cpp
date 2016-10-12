@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/12 19:28:22 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/12 20:11:04 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -360,8 +360,8 @@ public:
 	{
 		auto		p_buffer = _particules_buffer.cl_acquire(queue);
 
-		_init_square_kernel.make_work<1>(_particule_count)
-		// _init_sphere_kernel.make_work<1>(_particule_count)
+		// _init_square_kernel.make_work<1>(_particule_count)
+		_init_sphere_kernel.make_work<1>(_particule_count)
 		// _init_cube_kernel.make_work<1>(_particule_count)
 				(queue, p_buffer.get_handle());
 	}
@@ -443,11 +443,12 @@ public:
 	typedef typename std::chrono::steady_clock	std_clock;
 
 	Main() :
-		GlfwWindowProxy(std::nullopt, "lol"),
+		GlfwWindowProxy({{500, 500}}, "lol"),
 		ClContextProxy(true),
 		_look_at_controller(),
 		_particle_system(get_context(), 200000),
-		_fps_counter(),
+		_cl_fps(),
+		_gl_fps(),
 
 		_m_proj(glm::perspective(65.f,
 			get_window_width() / (float)get_window_height(), 0.01f, 1000.f)),
@@ -481,30 +482,23 @@ public:
 			delta_t = now - last_frame;
 			last_frame = now;
 
-			_fps_counter.begin(now);
+			_cl_fps.begin(now);
+			{
+				_particle_system.update(get_queue(), delta_t.count());
+				clFinish(get_queue());
+			}
+			if (_cl_fps.end())
+				_print_stats("cl", _cl_fps.get_fps(), _cl_fps.get_stats());
 
-			_particle_system.update(get_queue(), delta_t.count());
-			clFinish(get_queue());
-
+			_gl_fps.begin();
 			{ // render particles
 				glClearColor(0.f, 0.f, 0.f, 1.f);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				_particle_system.render();
+				glFinish();
 			}
-
-			glFinish();
-
-			if (_fps_counter.end())
-			{
-				float		min, max, avg;
-
-				std::tie(min, max, avg) = _fps_counter.get_stats();
-				ft::f(std::cout, " %%% fps; min=%%%; max=%%%; avg=%%%\n",
-						std::setprecision(3), std::fixed, _fps_counter.get_fps(),
-						std::setprecision(6), std::fixed, min,
-						std::setprecision(6), std::fixed, max,
-						std::setprecision(6), std::fixed, avg);
-			}
+			if (_gl_fps.end())
+				_print_stats("gl", _gl_fps.get_fps(), _gl_fps.get_stats());
 
 			glfwSwapBuffers(get_window());
 
@@ -512,6 +506,19 @@ public:
 				update_camera();
 			glfwPollEvents();
 		}
+	}
+
+	void			_print_stats(char const *name, float fps,
+						std::tuple<float, float, float> const &stats)
+	{
+		float		min, max, avg;
+
+		std::tie(min, max, avg) = stats;
+		ft::f(std::cout, " % %%% fps; min=%%%; max=%%%; avg=%%%\n", name,
+				std::setprecision(3), std::fixed, fps,
+				std::setprecision(6), std::fixed, min,
+				std::setprecision(6), std::fixed, max,
+				std::setprecision(6), std::fixed, avg);
 	}
 
 	void			update_camera()
@@ -531,7 +538,7 @@ public:
 		if (f != _keys.end())
 			_look_at_controller.press(f->second);
 		else if (key == 75)
-			_particle_system.explode(1.f);
+			_particle_system.explode(10.f);
 	}
 
 	virtual void	on_key_release(int key, int, int)
@@ -547,7 +554,8 @@ private:
 
 	ParticleSystem			_particle_system;
 
-	FpsCounter<std_clock>	_fps_counter;
+	FpsCounter<std_clock, 1>	_cl_fps;
+	FpsCounter<std_clock, 1>	_gl_fps;
 
 	glm::mat4				_m_proj;
 	float					_camera_dist;
