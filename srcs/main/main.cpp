@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/12 17:45:58 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/12 19:28:22 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -345,6 +345,7 @@ public:
 		_init_sphere_kernel(_update_program, "init_sphere"),
 		_init_cube_kernel(_update_program, "init_cube"),
 		_update_kernel(_update_program, "update"),
+		_explode_kernel(_update_program, "explode"),
 
 		_render_program(get_shaders(gl_program_particle)),
 		_uniform_matrix(_render_program, "u_matrix"),
@@ -359,9 +360,10 @@ public:
 	{
 		auto		p_buffer = _particules_buffer.cl_acquire(queue);
 
-		// _init_square_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
-		// _init_sphere_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
-		_init_cube_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
+		_init_square_kernel.make_work<1>(_particule_count)
+		// _init_sphere_kernel.make_work<1>(_particule_count)
+		// _init_cube_kernel.make_work<1>(_particule_count)
+				(queue, p_buffer.get_handle());
 	}
 
 	void			set_matrix(glm::mat4 const &m)
@@ -369,10 +371,21 @@ public:
 		_uniform_matrix = m;
 	}
 
+	void			explode(float force)
+	{
+		_explode = force;
+	}
+
 	void			update(cl_command_queue queue, float delta_t)
 	{
 		auto		p_buffer = _particules_buffer.cl_acquire(queue);
 
+		if (_explode)
+		{
+			_explode_kernel.make_work<1>(_particule_count)
+					(queue, p_buffer.get_handle(), {{0.f, 0.f, 0.f}}, *_explode);
+			_explode = std::nullopt;
+		}
 		_update_kernel.make_work<1>(_particule_count)
 				(queue, p_buffer.get_handle(),
 						{{0.f, 0.f, 0.f}}, delta_t);
@@ -396,6 +409,7 @@ private:
 	ClKernel<cl_mem>	_init_sphere_kernel;
 	ClKernel<cl_mem>	_init_cube_kernel;
 	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
+	ClKernel<cl_mem, cl_float4, cl_float>	_explode_kernel;
 
 	GLuint			_render_program;
 
@@ -405,6 +419,8 @@ private:
 				attrib<particule::particule, particule::vec4, &particule::particule::pos>,
 				attrib<particule::particule, particule::vec4, &particule::particule::color>
 			>		_particules_buffer;
+
+	std::optional<float>	_explode;
 
 private:
 	ParticleSystem() = delete;
@@ -427,13 +443,15 @@ public:
 	typedef typename std::chrono::steady_clock	std_clock;
 
 	Main() :
-		GlfwWindowProxy({{500, 500}}, "lol"),
+		GlfwWindowProxy(std::nullopt, "lol"),
 		ClContextProxy(true),
 		_look_at_controller(),
-		_particle_system(get_context(), 1000000),
+		_particle_system(get_context(), 200000),
 		_fps_counter(),
 
-		_m_proj(glm::perspective(42.f, 1.f, 0.01f, 1000.f))
+		_m_proj(glm::perspective(65.f,
+			get_window_width() / (float)get_window_height(), 0.01f, 1000.f)),
+		_camera_dist(1.5f)
 
 	{
 		glEnable(GL_DEPTH_TEST);
@@ -481,12 +499,11 @@ public:
 				float		min, max, avg;
 
 				std::tie(min, max, avg) = _fps_counter.get_stats();
-				ft::f(std::cout, " %%% fps; min=%%%; max=%%%; avg=%%%\r",
+				ft::f(std::cout, " %%% fps; min=%%%; max=%%%; avg=%%%\n",
 						std::setprecision(3), std::fixed, _fps_counter.get_fps(),
 						std::setprecision(6), std::fixed, min,
 						std::setprecision(6), std::fixed, max,
 						std::setprecision(6), std::fixed, avg);
-				std::cout << std::flush;
 			}
 
 			glfwSwapBuffers(get_window());
@@ -500,7 +517,7 @@ public:
 	void			update_camera()
 	{
 		glm::mat4 const	m_view = glm::lookAt(
-				_look_at_controller.get_look_at(),
+				_look_at_controller.get_look_at() * _camera_dist,
 				glm::vec3(0.f, 0.f, 0.f),
 				glm::vec3(0.f, 1.f, 0.f));
 
@@ -513,6 +530,8 @@ public:
 
 		if (f != _keys.end())
 			_look_at_controller.press(f->second);
+		else if (key == 75)
+			_particle_system.explode(1.f);
 	}
 
 	virtual void	on_key_release(int key, int, int)
@@ -525,9 +544,13 @@ public:
 
 private:
 	LookAtController		_look_at_controller;
+
 	ParticleSystem			_particle_system;
+
 	FpsCounter<std_clock>	_fps_counter;
+
 	glm::mat4				_m_proj;
+	float					_camera_dist;
 
 	static std::map<int, LookAtController::flag> const	_keys;
 

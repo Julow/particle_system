@@ -6,7 +6,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/11 18:32:19 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/12 19:23:24 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,4 +87,14 @@ __kernel void		update(__global particule *buff,
 	buff[id].velocity += normalize(r_diff) * delta_v;
 
 	buff[id].pos += buff[id].velocity * delta_t;
+}
+
+__kernel void		explode(__global particule *buff,
+						float4 center, float force)
+{
+	uint const			id = get_global_id(0);
+	float4 const		d = center - buff[id].pos;
+	float const			f = force / max(1.f, dot(d, d));
+
+	buff[id].velocity -= normalize(d) * f;
 }
