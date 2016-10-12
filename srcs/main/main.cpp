@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/12 11:29:54 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/12 16:45:33 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -293,6 +293,81 @@ private:
 
 /*
 ** ========================================================================== **
+** FpsCounter
+*/
+
+template<typename CLOCK, unsigned RES_RATIO = 10>
+class	FpsCounter
+{
+public:
+	typedef typename CLOCK::duration	duration_t;
+	typedef typename CLOCK::time_point	time_point_t;
+
+	constexpr static const unsigned		BUFF_SIZE = RES_RATIO + 1;
+
+	struct	frame
+	{
+		time_point_t	begin;
+		unsigned		count;
+	};
+
+	FpsCounter() {}
+
+	virtual ~FpsCounter() {}
+
+	void			init(time_point_t const &now)
+	{
+		_last_update = now;
+		_i = 0;
+		for (frame &f : _frames)
+			f = {now, 0};
+	}
+
+	bool			update(time_point_t const &now)
+	{
+		static const duration_t		RES_INTERVAL =
+					std::chrono::duration<long long, std::ratio<1, RES_RATIO>>(1);
+
+		_last_update = now;
+		if ((_frames[_i].begin + RES_INTERVAL) <= now)
+		{
+			if (++_i >= BUFF_SIZE)
+				_i = 0;
+			_frames[_i] = {now, 1};
+			return (true);
+		}
+		_frames[_i].count++;
+		return (false);
+	}
+
+	float			get_fps() const
+	{
+		unsigned const		last = (_i + 1) % BUFF_SIZE;
+		std::chrono::duration<float, std::ratio<1>> const	delta = _last_update - _frames[last].begin;
+		unsigned			total_count;
+
+		total_count = 0;
+		for (frame const &f : _frames)
+			total_count += f.count;
+		return (total_count / delta.count());
+	}
+
+private:
+
+	frame			_frames[BUFF_SIZE];
+	unsigned		_i;
+
+	time_point_t	_last_update;
+
+private:
+	FpsCounter(FpsCounter &&src) = delete;
+	FpsCounter(FpsCounter const &src) = delete;
+	FpsCounter		&operator=(FpsCounter &&rhs) = delete;
+	FpsCounter		&operator=(FpsCounter const &rhs) = delete;
+};
+
+/*
+** ========================================================================== **
 ** ParticleSystem
 */
 
@@ -359,9 +434,9 @@ public:
 	{
 		auto		p_buffer = _particules_buffer.cl_acquire(queue);
 
-		_init_square_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
+		// _init_square_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
 		// _init_sphere_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
-		// _init_cube_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
+		_init_cube_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
 	}
 
 	void			set_matrix(glm::mat4 const &m)
@@ -418,14 +493,19 @@ private:
 ** ========================================================================== **
 */
 
+#include <iomanip>
+
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
 public:
+	typedef typename std::chrono::steady_clock	std_clock;
+
 	Main() :
-		GlfwWindowProxy(std::nullopt, "lol"),
+		GlfwWindowProxy({{500, 500}}, "lol"),
 		ClContextProxy(true),
 		_look_at_controller(),
 		_particle_system(get_context(), 1000000),
+		_fps_counter(),
 
 		_m_proj(glm::perspective(42.f, 1.f, 0.01f, 1000.f))
 
@@ -445,16 +525,14 @@ public:
 
 	void			loop()
 	{
-		using std_clock = std::chrono::steady_clock;
-		std::chrono::time_point<std_clock>			last_frame;
-		std::chrono::time_point<std_clock>			now;
+		std_clock::time_point	last_frame;
+		std_clock::time_point	now;
 		std::chrono::duration<float, std::ratio<1>>	delta_t;
 
+		_fps_counter.init(std_clock::now());
 		last_frame = std_clock::now();
 		while (!glfwWindowShouldClose(get_window()))
 		{
-			glfwPollEvents();
-			glfwSwapBuffers(get_window());
 
 			now = std_clock::now();
 			delta_t = now - last_frame;
@@ -469,8 +547,15 @@ public:
 				_particle_system.render();
 			}
 
+			glfwSwapBuffers(get_window());
+
+			if (_fps_counter.update(now))
+				std::cout << " " << std::setprecision(2) << std::fixed
+					<< _fps_counter.get_fps() << " FPS\r" << std::flush;
+
 			if (_look_at_controller.update(delta_t.count()))
 				update_camera();
+			glfwPollEvents();
 		}
 	}
 
@@ -501,9 +586,10 @@ public:
 	}
 
 private:
-	LookAtController	_look_at_controller;
-	ParticleSystem		_particle_system;
-	glm::mat4			_m_proj;
+	LookAtController		_look_at_controller;
+	ParticleSystem			_particle_system;
+	FpsCounter<std_clock>	_fps_counter;
+	glm::mat4				_m_proj;
 
 	static std::map<int, LookAtController::flag> const	_keys;
 
