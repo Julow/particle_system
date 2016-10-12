@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/11 18:35:10 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/12 11:29:54 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -293,6 +293,7 @@ private:
 
 /*
 ** ========================================================================== **
+** ParticleSystem
 */
 
 #include "ClGlBuffer.hpp"
@@ -311,7 +312,7 @@ std::vector<shader_info>	gl_program_particle = {
 		"layout (location = 0) in vec4		buff_pos;"
 		"layout (location = 1) in vec4		buff_color;"
 		""
-		"uniform mat4	u_m_viewproj;"
+		"uniform mat4	u_matrix;"
 		""
 		"out vec4		p_color;"
 		""
@@ -319,7 +320,7 @@ std::vector<shader_info>	gl_program_particle = {
 		"{"
 		"	p_color = buff_color;"
 		"	gl_PointSize = 1;"
-		"	gl_Position = u_m_viewproj * buff_pos;"
+		"	gl_Position = u_matrix * buff_pos;"
 		// "	gl_Position = buff_pos;"
 		"}"
 	},
@@ -332,26 +333,99 @@ std::vector<shader_info>	gl_program_particle = {
 	},
 };
 
-class	Main final : GlfwWindowProxy, ClContextProxy, LookAtController
+class	ParticleSystem
+{
+public:
+	ParticleSystem(cl_context context, unsigned particle_count)
+		: _particule_count(particle_count),
+		_cl_context(context),
+
+		_update_program(get_program(_cl_context, cl_program_particle)),
+		_init_square_kernel(_update_program, "init_square"),
+		_init_sphere_kernel(_update_program, "init_sphere"),
+		_init_cube_kernel(_update_program, "init_cube"),
+		_update_kernel(_update_program, "update"),
+
+		_render_program(get_shaders(gl_program_particle)),
+		_uniform_matrix(_render_program, "u_matrix"),
+
+		_particules_buffer(_cl_context, _particule_count, nullptr)
+
+	{}
+
+	virtual ~ParticleSystem() {}
+
+	void			init(cl_command_queue queue)
+	{
+		auto		p_buffer = _particules_buffer.cl_acquire(queue);
+
+		_init_square_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
+		// _init_sphere_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
+		// _init_cube_kernel.make_work<1>(_particule_count)(queue, p_buffer.get_handle());
+	}
+
+	void			set_matrix(glm::mat4 const &m)
+	{
+		_uniform_matrix = m;
+	}
+
+	void			update(cl_command_queue queue, float delta_t)
+	{
+		auto		p_buffer = _particules_buffer.cl_acquire(queue);
+
+		_update_kernel.make_work<1>(_particule_count)
+				(queue, p_buffer.get_handle(),
+						{{0.f, 0.f, 0.f}}, delta_t);
+	}
+
+	void			render()
+	{
+		glUseProgram(_render_program);
+		glBindVertexArray(_particules_buffer.get_gl_handle());
+		glDrawArrays(GL_POINTS, 0, _particule_count);
+		glBindVertexArray(0);
+	}
+
+private:
+	unsigned		_particule_count;
+
+	cl_context		_cl_context;
+
+	cl_program			_update_program;
+	ClKernel<cl_mem>	_init_square_kernel;
+	ClKernel<cl_mem>	_init_sphere_kernel;
+	ClKernel<cl_mem>	_init_cube_kernel;
+	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
+
+	GLuint			_render_program;
+
+	GlUniform<glm::mat4>	_uniform_matrix;
+
+	ClGlBuffer<particule::particule,
+				attrib<particule::particule, particule::vec4, &particule::particule::pos>,
+				attrib<particule::particule, particule::vec4, &particule::particule::color>
+			>		_particules_buffer;
+
+private:
+	ParticleSystem() = delete;
+	ParticleSystem(ParticleSystem &&src) = delete;
+	ParticleSystem(ParticleSystem const &src) = delete;
+	ParticleSystem	&operator=(ParticleSystem &&rhs) = delete;
+	ParticleSystem	&operator=(ParticleSystem const &rhs) = delete;
+};
+
+/*
+** ========================================================================== **
+*/
+
+class	Main final : GlfwWindowProxy, ClContextProxy
 {
 public:
 	Main() :
 		GlfwWindowProxy(std::nullopt, "lol"),
 		ClContextProxy(true),
-		LookAtController(),
-
-		particule_count(1000000),
-
-		_particule_program(get_program(get_context(), cl_program_particle)),
-		_init_square_kernel(_particule_program, "init_square"),
-		_init_sphere_kernel(_particule_program, "init_sphere"),
-		_init_cube_kernel(_particule_program, "init_cube"),
-		_update_kernel(_particule_program, "update"),
-
-		_shader_program(get_shaders(gl_program_particle)),
-		_uniform_m_viewproj(_shader_program, "u_m_viewproj"),
-
-		_particules_buffer(get_context(), particule_count, nullptr),
+		_look_at_controller(),
+		_particle_system(get_context(), 1000000),
 
 		_m_proj(glm::perspective(42.f, 1.f, 0.01f, 1000.f))
 
@@ -363,34 +437,9 @@ public:
 
 	virtual ~Main() {}
 
-	unsigned const		particule_count;
-
-	cl_program				_particule_program;
-	ClKernel<cl_mem>		_init_square_kernel;
-	ClKernel<cl_mem>		_init_sphere_kernel;
-	ClKernel<cl_mem>		_init_cube_kernel;
-	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
-
-	GLuint				_shader_program;
-
-	GlUniform<glm::mat4>	_uniform_m_viewproj;
-
-	ClGlBuffer<particule::particule,
-				attrib<particule::particule, particule::vec4, &particule::particule::pos>,
-				attrib<particule::particule, particule::vec4, &particule::particule::color>
-			>			_particules_buffer;
-
-	glm::mat4		_m_proj;
-
 	void			init()
 	{
-		{ // init particules
-			auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
-
-			_init_square_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
-			// _init_sphere_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
-			// _init_cube_kernel.make_work<1>(particule_count)(get_queue(), p_buffer.get_handle());
-		}
+		_particle_system.init(get_queue());
 		clFinish(get_queue());
 	}
 
@@ -411,25 +460,16 @@ public:
 			delta_t = now - last_frame;
 			last_frame = now;
 
-			{ // update particules
-				auto		p_buffer = _particules_buffer.cl_acquire(get_queue());
-
-				_update_kernel.make_work<1>(particule_count)
-						(get_queue(), p_buffer.get_handle(),
-							{{0.f, 0.f, 0.f}}, delta_t.count());
-				clFinish(get_queue());
-			}
+			_particle_system.update(get_queue(), delta_t.count());
+			clFinish(get_queue());
 
 			{ // render particles
 				glClearColor(0.f, 0.f, 0.f, 1.f);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				glUseProgram(_shader_program);
-				glBindVertexArray(_particules_buffer.get_gl_handle());
-				glDrawArrays(GL_POINTS, 0, particule_count);
-				glBindVertexArray(0);
+				_particle_system.render();
 			}
 
-			if (LookAtController::update(delta_t.count()))
+			if (_look_at_controller.update(delta_t.count()))
 				update_camera();
 		}
 	}
@@ -437,11 +477,11 @@ public:
 	void			update_camera()
 	{
 		glm::mat4 const	m_view = glm::lookAt(
-				LookAtController::get_look_at(),
+				_look_at_controller.get_look_at(),
 				glm::vec3(0.f, 0.f, 0.f),
 				glm::vec3(0.f, 1.f, 0.f));
 
-		_uniform_m_viewproj = _m_proj * m_view;
+		_particle_system.set_matrix(_m_proj * m_view);
 	}
 
 	virtual void	on_key_press(int key, int, int)
@@ -449,7 +489,7 @@ public:
 		auto const		f = _keys.find(key);
 
 		if (f != _keys.end())
-			LookAtController::press(f->second);
+			_look_at_controller.press(f->second);
 	}
 
 	virtual void	on_key_release(int key, int, int)
@@ -457,10 +497,14 @@ public:
 		auto const		f = _keys.find(key);
 
 		if (f != _keys.end())
-			LookAtController::release(f->second);
+			_look_at_controller.release(f->second);
 	}
 
 private:
+	LookAtController	_look_at_controller;
+	ParticleSystem		_particle_system;
+	glm::mat4			_m_proj;
+
 	static std::map<int, LookAtController::flag> const	_keys;
 
 private:
