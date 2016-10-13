@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 11:47:52 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 13:44:15 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -296,6 +296,7 @@ private:
 ** ParticleSystem
 */
 
+#include "ClBuffer.hpp"
 #include "ClGlBuffer.hpp"
 #include "GlBuffer.hpp"
 #include "particule.cl.h"
@@ -350,7 +351,8 @@ public:
 		_render_program(get_shaders(gl_program_particle)),
 		_uniform_matrix(_render_program, "u_matrix"),
 
-		_particules_buffer(_cl_context, _particule_count, nullptr)
+		_particle_vertices(_cl_context, _particule_count, nullptr),
+		_particle_infos(_cl_context, _particule_count)
 
 	{}
 
@@ -358,12 +360,12 @@ public:
 
 	void			init(cl_command_queue queue)
 	{
-		auto		p_buffer = _particules_buffer.cl_acquire(queue);
+		auto		p_vertices = _particle_vertices.cl_acquire(queue);
 
 		// _init_square_kernel.make_work<1>(_particule_count)
 		_init_sphere_kernel.make_work<1>(_particule_count)
 		// _init_cube_kernel.make_work<1>(_particule_count)
-				(queue, p_buffer.get_handle());
+				(queue, p_vertices->get_handle(), _particle_infos.get_handle());
 	}
 
 	void			set_matrix(glm::mat4 const &m)
@@ -378,23 +380,25 @@ public:
 
 	void			update(cl_command_queue queue, float delta_t)
 	{
-		auto		p_buffer = _particules_buffer.cl_acquire(queue);
+		auto		p_vertices = _particle_vertices.cl_acquire(queue);
 
 		if (_explode)
 		{
 			_explode_kernel.make_work<1>(_particule_count)
-					(queue, p_buffer.get_handle(), {{0.f, 0.f, 0.f}}, *_explode);
+					(queue, p_vertices->get_handle(),
+						_particle_infos.get_handle(),
+						{{0.f, 0.f, 0.f}}, *_explode);
 			_explode = std::nullopt;
 		}
 		_update_kernel.make_work<1>(_particule_count)
-				(queue, p_buffer.get_handle(),
+				(queue, p_vertices->get_handle(), _particle_infos.get_handle(),
 						{{0.f, 0.f, 0.f}}, delta_t);
 	}
 
 	void			render()
 	{
 		glUseProgram(_render_program);
-		glBindVertexArray(_particules_buffer.get_gl_handle());
+		glBindVertexArray(_particle_vertices.get_gl_handle());
 		glDrawArrays(GL_POINTS, 0, _particule_count);
 		glBindVertexArray(0);
 	}
@@ -405,20 +409,22 @@ private:
 	cl_context		_cl_context;
 
 	cl_program			_update_program;
-	ClKernel<cl_mem>	_init_square_kernel;
-	ClKernel<cl_mem>	_init_sphere_kernel;
-	ClKernel<cl_mem>	_init_cube_kernel;
-	ClKernel<cl_mem, cl_float4, cl_float>	_update_kernel;
-	ClKernel<cl_mem, cl_float4, cl_float>	_explode_kernel;
+	ClKernel<cl_mem, cl_mem>	_init_square_kernel;
+	ClKernel<cl_mem, cl_mem>	_init_sphere_kernel;
+	ClKernel<cl_mem, cl_mem>	_init_cube_kernel;
+	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_kernel;
+	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_explode_kernel;
 
 	GLuint			_render_program;
 
 	GlUniform<glm::mat4>	_uniform_matrix;
 
-	ClGlBuffer<particule::particule,
-				attrib<particule::particule, particule::vec4, &particule::particule::pos>,
-				attrib<particule::particule, particule::vec4, &particule::particule::color>
-			>		_particules_buffer;
+	ClGlBuffer<particule::p_vertex,
+			attrib<particule::p_vertex, particule::vec4, &particule::p_vertex::pos>,
+			attrib<particule::p_vertex, particule::vec4, &particule::p_vertex::color>
+		>			_particle_vertices;
+
+	ClBuffer<particule::p_info>	_particle_infos;
 
 	std::optional<float>	_explode;
 
@@ -443,7 +449,7 @@ public:
 	typedef typename std::chrono::steady_clock	std_clock;
 
 	Main() :
-		GlfwWindowProxy({{500, 500}}, "lol"),
+		GlfwWindowProxy(std::nullopt, "lol"),
 		ClContextProxy(true),
 		_look_at_controller(),
 		_particle_system(get_context(), 200000),

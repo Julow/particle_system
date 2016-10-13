@@ -6,7 +6,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/07 16:22:34 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/10 14:40:08 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/13 12:52:54 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,14 +30,19 @@ static_assert(std::is_same<cl_float, GLfloat>::value, "");
 # else
 
 typedef float4				vec4;
-typedef struct particule	particule;
+typedef struct p_vertex		p_vertex;
+typedef struct p_info		p_info;
 
 # endif
 
-struct	particule
+struct	p_vertex
 {
 	vec4		pos;
 	vec4		color;
+};
+
+struct	p_info
+{
 	vec4		velocity;
 	float		mass;
 	float		_pad[3];
