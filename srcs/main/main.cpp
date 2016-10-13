@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/12 20:11:04 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 11:47:52 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -488,7 +488,7 @@ public:
 				clFinish(get_queue());
 			}
 			if (_cl_fps.end())
-				_print_stats("cl", _cl_fps.get_fps(), _cl_fps.get_stats());
+				_print_stats("\033[92mcl", _cl_fps.get_fps(), _cl_fps.get_stats());
 
 			_gl_fps.begin();
 			{ // render particles
@@ -498,7 +498,7 @@ public:
 				glFinish();
 			}
 			if (_gl_fps.end())
-				_print_stats("gl", _gl_fps.get_fps(), _gl_fps.get_stats());
+				_print_stats("\033[93mgl", _gl_fps.get_fps(), _gl_fps.get_stats());
 
 			glfwSwapBuffers(get_window());
 
@@ -506,6 +506,8 @@ public:
 				update_camera();
 			glfwPollEvents();
 		}
+		_print_stats("\033[33mavg gl", _gl_fps.get_global_fps(), _gl_fps.get_global_stats());
+		_print_stats("\033[32mavg cl", _cl_fps.get_global_fps(), _cl_fps.get_global_stats());
 	}
 
 	void			_print_stats(char const *name, float fps,
@@ -514,7 +516,7 @@ public:
 		float		min, max, avg;
 
 		std::tie(min, max, avg) = stats;
-		ft::f(std::cout, " % %%% fps; min=%%%; max=%%%; avg=%%%\n", name,
+		ft::f(std::cout, " % %%% fps; min=%%%; max=%%%; avg=%%%\033[0m\n", name,
 				std::setprecision(3), std::fixed, fps,
 				std::setprecision(6), std::fixed, min,
 				std::setprecision(6), std::fixed, max,

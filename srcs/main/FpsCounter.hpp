@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/12 17:36:07 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/12 17:51:02 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 11:55:55 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -26,8 +26,9 @@ class	FpsCounter
 public:
 	typedef typename CLOCK::duration	duration_t;
 	typedef typename CLOCK::time_point	time_point_t;
+	typedef std::chrono::duration<float, std::ratio<1>>	s_duration_t;
 
-	FpsCounter() : _frames{}, _i(0), _frame_begin(), _last_update() {}
+	FpsCounter();
 
 	virtual ~FpsCounter() {}
 
@@ -53,6 +54,12 @@ public:
 	*/
 	std::tuple<float, float, float>	get_stats() const;
 
+	/*
+	** Global stats
+	*/
+	float							get_global_fps() const;
+	std::tuple<float, float, float>	get_global_stats() const;
+
 private:
 	struct	frame
 	{
@@ -70,6 +77,8 @@ private:
 
 	time_point_t	_frame_begin;
 	time_point_t	_last_update;
+
+	frame			_global;
 
 private:
 	FpsCounter(FpsCounter &&src) = delete;
