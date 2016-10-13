@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 13:45:50 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 19:55:53 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -29,8 +29,6 @@ public:
 
 	virtual ~ClGlBuffer();
 
-	acquired		cl_acquire(cl_command_queue queue);
-
 	GLuint			get_gl_handle();
 	cl_mem			get_cl_handle();
 
@@ -49,30 +47,36 @@ private:
 
 /*
 ** Lock-like object to use the buffer with OpenCL
-** ClGlBuffer::cl_acquire(queue)
+** cl_acquire(queue, buffers...)
 */
-template<typename T, typename ...ATTRIBS>
-class	ClGlBuffer<T, ATTRIBS...>::acquired
+template<typename ...T>
+class	cl_acquired : public std::tuple<ClBuffer<T>&...>
 {
 public:
-	acquired(cl_command_queue queue, ClBuffer<T> &buff);
-	acquired(acquired &&src);
+	cl_acquired(cl_command_queue queue, ClBuffer<T>& ...buffs);
 
-	virtual ~acquired();
+	cl_acquired(cl_acquired &&src);
 
-	ClBuffer<T>		&operator*();
-	ClBuffer<T>		*operator->();
+	virtual ~cl_acquired();
 
 private:
+	constexpr static unsigned const	BUFF_COUNT = sizeof...(T);
+
 	cl_command_queue	_queue;
-	ClBuffer<T>			&_buff;
+
+	template<size_t ...INDEXES>
+	void			_get_handles(cl_mem *dst, std::index_sequence<INDEXES...>);
 
 private:
-	acquired() = delete;
-	acquired(acquired const &src) = delete;
-	acquired		&operator=(acquired &&rhs) = delete;
-	acquired		&operator=(acquired const &rhs) = delete;
+	cl_acquired() = delete;
+	cl_acquired(cl_acquired const &src) = delete;
+	cl_acquired			&operator=(cl_acquired &&rhs) = delete;
+	cl_acquired			&operator=(cl_acquired const &rhs) = delete;
 };
+
+template<typename ...BUFFERS>
+auto				cl_acquire(cl_command_queue queue, BUFFERS& ...buffs)
+	-> decltype(_cl_acquire(queue, _cl_acquire_cast(buffs)...));
 
 # include "ClGlBuffer.tpp"
 

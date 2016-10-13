@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 13:45:39 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 19:54:29 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -29,13 +29,6 @@ ClGlBuffer<T, ATT...>::~ClGlBuffer()
 {}
 
 template<typename T, typename ...ATT>
-typename ClGlBuffer<T, ATT...>::acquired
-				ClGlBuffer<T, ATT...>::cl_acquire(cl_command_queue queue)
-{
-	return (ClGlBuffer<T, ATT...>::acquired(queue, *this));
-}
-
-template<typename T, typename ...ATT>
 GLuint			ClGlBuffer<T, ATT...>::get_gl_handle()
 {
 	return (GlBuffer<T, ATT...>::get_handle());
@@ -45,41 +38,6 @@ template<typename T, typename ...ATT>
 cl_mem			ClGlBuffer<T, ATT...>::get_cl_handle()
 {
 	return (ClBuffer<T>::get_handle());
-}
-
-template<typename T, typename ...ATT>
-ClGlBuffer<T, ATT...>::acquired::acquired(cl_command_queue queue,
-			ClBuffer<T> &buff)
-	: _queue(queue), _buff(buff)
-{
-	cl_mem const	handle = _buff.get_handle();
-
-	clEnqueueAcquireGLObjects(queue, 1, &handle, 0, NULL, NULL);
-}
-
-template<typename T, typename ...ATT>
-ClGlBuffer<T, ATT...>::acquired::acquired(acquired &&src)
-	: _queue(src._queue), _buff(src._buff)
-{}
-
-template<typename T, typename ...ATT>
-ClGlBuffer<T, ATT...>::acquired::~acquired()
-{
-	cl_mem const	handle = _buff.get_handle();
-
-	clEnqueueReleaseGLObjects(_queue, 1, &handle, 0, NULL, NULL);
-}
-
-template<typename T, typename ...ATT>
-ClBuffer<T>		&ClGlBuffer<T, ATT...>::acquired::operator*()
-{
-	return (_buff);
-}
-
-template<typename T, typename ...ATT>
-ClBuffer<T>		*ClGlBuffer<T, ATT...>::acquired::operator->()
-{
-	return (&_buff);
 }
 
 template<typename T, typename ...ATT>
@@ -94,6 +52,61 @@ cl_mem			ClGlBuffer<T, ATT...>::_get_cl_buffer(cl_context c,
 		throw std::runtime_error("clCreateFromGLBuffer: %"_f
 						(ClContextProxy::strerror(err)));
 	return (buff);
+}
+
+template<typename ...T>
+cl_acquired<T...>::cl_acquired(cl_command_queue queue, ClBuffer<T>& ...buffs) :
+	std::tuple<ClBuffer<T>&...>(buffs...),
+	_queue(queue)
+{
+	cl_mem		handles[BUFF_COUNT];
+
+	_get_handles(handles, std::make_index_sequence<sizeof...(T)>());
+	clEnqueueAcquireGLObjects(_queue, BUFF_COUNT, handles, 0, NULL, NULL);
+}
+
+template<typename ...T>
+cl_acquired<T...>::cl_acquired(cl_acquired<T...> &&src) :
+	std::tuple<ClBuffer<T>&...>(std::forward<cl_acquired>(src)),
+	_queue(src._queue)
+{}
+
+template<typename ...T>
+cl_acquired<T...>::~cl_acquired()
+{
+	cl_mem		handles[BUFF_COUNT];
+
+	_get_handles(handles, std::make_index_sequence<sizeof...(T)>());
+	clEnqueueReleaseGLObjects(_queue, BUFF_COUNT, handles, 0, NULL, NULL);
+}
+
+template<typename ...T>
+template<size_t ...INDEXES>
+void				cl_acquired<T...>::_get_handles(cl_mem *dst,
+						std::index_sequence<INDEXES...>)
+{
+	(void)(int[]){((
+			dst[INDEXES] = std::get<INDEXES>(*this).get_handle()
+		), 0)...};
+}
+
+template<typename T, typename ...ATTRS>
+ClBuffer<T>			&_cl_acquire_cast(ClGlBuffer<T, ATTRS...> &buff)
+{
+	return ((ClBuffer<T>&)(buff)); // TODO: lol
+}
+
+template<typename ...T>
+cl_acquired<T...>	_cl_acquire(cl_command_queue queue, ClBuffer<T>& ...buffs)
+{
+	return (cl_acquired<T...>(queue, buffs...));
+}
+
+template<typename ...BUFFERS>
+auto				cl_acquire(cl_command_queue queue, BUFFERS& ...buffs)
+	-> decltype(_cl_acquire(queue, _cl_acquire_cast(buffs)...))
+{
+	return (_cl_acquire(queue, _cl_acquire_cast(buffs)...));
 }
 
 #endif

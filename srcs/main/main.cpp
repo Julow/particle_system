@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 16:27:05 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 19:41:41 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -372,12 +372,12 @@ public:
 
 	void			init(cl_command_queue queue)
 	{
-		auto		p_vertices = _particle_vertices.cl_acquire(queue);
+		auto	p_vertices = cl_acquire(queue, _particle_vertices);
 
 		// _init_square_kernel.make_work<1>(_particule_count)
 		// _init_sphere_kernel.make_work<1>(_particule_count)
 		_init_cube_kernel.make_work<1>(_particule_count)
-				(queue, p_vertices->get_handle(), _particle_infos.get_handle());
+				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
 	}
 
 	void			set_matrix(glm::mat4 const &m)
@@ -392,18 +392,18 @@ public:
 
 	void			update(cl_command_queue queue, float delta_t)
 	{
-		auto		p_vertices = _particle_vertices.cl_acquire(queue);
+		auto	p_vertices = cl_acquire(queue, _particle_vertices);
 
 		if (_explode)
 		{
 			_explode_kernel.make_work<1>(_particule_count)
-					(queue, p_vertices->get_handle(),
+					(queue, std::get<0>(p_vertices).get_handle(),
 						_particle_infos.get_handle(),
 						{{0.f, 0.f, 0.f}}, *_explode);
 			_explode = std::nullopt;
 		}
 		_update_kernel.make_work<1>(_particule_count)
-				(queue, p_vertices->get_handle(), _particle_infos.get_handle(),
+				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(),
 						{{0.f, 0.f, 0.f}}, delta_t);
 	}
 
