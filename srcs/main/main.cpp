@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 13:44:15 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 16:27:05 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -316,13 +316,25 @@ std::vector<shader_info>	gl_program_particle = {
 		"uniform mat4	u_matrix;"
 		""
 		"out vec4		p_color;"
+		"\n"
+		"#define PARTICLE_SIZE		1.f\n"
 		""
 		"void		main()"
 		"{"
 		"	p_color = buff_color;"
-		"	gl_PointSize = 1;"
 		"	gl_Position = u_matrix * buff_pos;"
-		// "	gl_Position = buff_pos;"
+		""
+		"	float		p_size = PARTICLE_SIZE / gl_Position.w;"
+		""
+		"	if (p_size < 1.f)"
+		"	{"
+		"		p_color *= p_size;"
+		// "		p_color *= p_size * p_size;"
+		// "		p_color *= sqrt(p_size);"
+		"		gl_PointSize = 1.f;"
+		"	}"
+		"	else"
+		"		gl_PointSize = p_size;"
 		"}"
 	},
 
@@ -363,8 +375,8 @@ public:
 		auto		p_vertices = _particle_vertices.cl_acquire(queue);
 
 		// _init_square_kernel.make_work<1>(_particule_count)
-		_init_sphere_kernel.make_work<1>(_particule_count)
-		// _init_cube_kernel.make_work<1>(_particule_count)
+		// _init_sphere_kernel.make_work<1>(_particule_count)
+		_init_cube_kernel.make_work<1>(_particule_count)
 				(queue, p_vertices->get_handle(), _particle_infos.get_handle());
 	}
 
@@ -546,7 +558,7 @@ public:
 		if (f != _keys.end())
 			_look_at_controller.press(f->second);
 		else if (key == 75)
-			_particle_system.explode(10.f);
+			_particle_system.explode(2.f);
 	}
 
 	virtual void	on_key_release(int key, int, int)
