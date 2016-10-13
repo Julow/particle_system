@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/08 18:04:19 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/13 13:45:50 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -20,7 +20,7 @@
 ** Shared buffer between OpenGL and OpenCL
 */
 template<typename T, typename ...ATTRIBS>
-class	ClGlBuffer : GlBuffer<T, ATTRIBS...>
+class	ClGlBuffer : GlBuffer<T, ATTRIBS...>, ClBuffer<T>
 {
 public:
 	class	acquired;
@@ -36,6 +36,8 @@ public:
 
 private:
 	cl_mem			_handle;
+
+	static cl_mem	_get_cl_buffer(cl_context c, GLuint gl_handle);
 
 private:
 	ClGlBuffer() = delete;
@@ -53,22 +55,23 @@ template<typename T, typename ...ATTRIBS>
 class	ClGlBuffer<T, ATTRIBS...>::acquired
 {
 public:
-	acquired(cl_command_queue queue, cl_mem handle);
+	acquired(cl_command_queue queue, ClBuffer<T> &buff);
 	acquired(acquired &&src);
 
 	virtual ~acquired();
 
-	cl_mem			get_handle();
+	ClBuffer<T>		&operator*();
+	ClBuffer<T>		*operator->();
 
 private:
 	cl_command_queue	_queue;
-	cl_mem				_handle;
+	ClBuffer<T>			&_buff;
 
 private:
 	acquired() = delete;
 	acquired(acquired const &src) = delete;
-	acquired			&operator=(acquired &&rhs) = delete;
-	acquired			&operator=(acquired const &rhs) = delete;
+	acquired		&operator=(acquired &&rhs) = delete;
+	acquired		&operator=(acquired const &rhs) = delete;
 };
 
 # include "ClGlBuffer.tpp"
