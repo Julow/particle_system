@@ -1,15 +1,15 @@
 #include "gen.h"
 
-char const		prog_particle_update[] = R"(
+char const		prog_particle_init[] = R"(
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   particle.cl                                        :+:      :+:    :+:   */
+/*   particle_init.cl                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/13 12:43:02 by jaguillo         ###   ########.fr       */
+/*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
+/*   Updated: 2016/10/14 18:15:20 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,6 +108,7 @@ __kernel void		init_sphere(__global p_vertex *vertex,
 	r = sqrt(1.f - pow(y, 2.f));
 	phi = (id % global_size) * M_PI * (3.f - sqrt(5.f));
 	vertex[id].pos = (float4){cos(phi) * r, y, sin(phi) * r, 1.f};
+	vertex[id].pos = normalize(vertex[id].pos);
 }
 
 __kernel void		init_cube(__global p_vertex *vertex,
@@ -129,6 +130,124 @@ __kernel void		init_cube(__global p_vertex *vertex,
 	else
 		vertex[id].pos = (float4){tmp.z, tmp.y, tmp.x, 1.f};
 }
+
+float				frand(uint *seed)
+{
+	uint const			salt = 209863451;
+	uint const			t = *seed ^ (*seed << 11);
+
+	*seed = salt ^ (salt >> 19) ^ (t ^ (t >> 8));
+	return (*seed / (float)0xFFFFFFFF);
+}
+
+__kernel void		init_rand_sphere(__global p_vertex *vertex,
+						__global p_info *info, uint initial_rand)
+{
+	uint			seed;
+	uint const		id = get_global_id(0);
+	float2			tmp;
+	float			len;
+
+	seed = initial_rand + (id | (id << 16)) * id;
+	_init_particle(vertex + id, info + id);
+	tmp = (float2){
+		(frand(&seed) * 2.f) * M_PI,
+		(frand(&seed) * 2.f) * M_PI
+	};
+	len = frand(&seed);
+
+	vertex[id].pos = (float4){
+		cos(tmp.x) * cos(tmp.y) * len,
+		sin(tmp.x) * cos(tmp.y) * len,
+		sin(tmp.y) * len,
+		1.f
+	};
+}
+
+__kernel void		init_rand_cube(__global p_vertex *vertex,
+						__global p_info *info, uint initial_rand)
+{
+	uint			seed;
+	uint const		id = get_global_id(0);
+
+	seed = initial_rand + (id | (id << 16)) * id;
+	_init_particle(vertex + id, info + id);
+	vertex[id].pos = (float4){
+		frand(&seed) * 2.f - 1.f,
+		frand(&seed) * 2.f - 1.f,
+		frand(&seed) * 2.f - 1.f,
+		1.f
+	};
+}
+)";
+
+char const		prog_particle_update[] = R"(
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   particle_update.cl                                 :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
+/*   Updated: 2016/10/14 14:59:43 by jaguillo         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   particule.cl.h                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2016/10/07 16:22:34 by jaguillo          #+#    #+#             */
+/*   Updated: 2016/10/13 12:52:54 by jaguillo         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef PARTICULE_CL_H
+# define PARTICULE_CL_H
+
+# ifndef __OPENCL_C_VERSION__
+
+#  include <glm/glm.hpp>
+
+namespace particule
+{
+
+typedef cl_float			_float;
+
+typedef glm::vec4			vec4;
+
+static_assert(std::is_same<cl_float, GLfloat>::value, "");
+
+# else
+
+typedef float4				vec4;
+typedef struct p_vertex		p_vertex;
+typedef struct p_info		p_info;
+
+# endif
+
+struct	p_vertex
+{
+	vec4		pos;
+	vec4		color;
+};
+
+struct	p_info
+{
+	vec4		velocity;
+	float		mass;
+	float		_pad[3];
+};
+
+# ifndef __OPENCL_C_VERSION__
+};
+# endif
+
+#endif
 
 __kernel void		update(__global p_vertex *vertex, __global p_info *info,
 						float4 center, float delta_t)
@@ -170,7 +289,7 @@ char const		prog_particle_render_vert[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 12:55:11 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/14 13:53:32 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/14 17:09:39 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -185,7 +304,7 @@ out vec4		p_color;
 
 void		main()
 {
-	vec4		p_pos = u_matrix * buff_pos;
+	vec4		p_pos = u_matrix * normalize(buff_pos);
 	float		p_size = PARTICLE_SIZE / p_pos.w;
 
 	p_color = buff_color * min(1.f, p_size); // ^2 ? sqrt ?

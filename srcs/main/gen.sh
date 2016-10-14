@@ -7,7 +7,7 @@
 #    By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2016/10/14 11:52:54 by jaguillo          #+#    #+#              #
-#    Updated: 2016/10/14 14:44:25 by jaguillo         ###   ########.fr        #
+#    Updated: 2016/10/14 15:00:26 by jaguillo         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -65,7 +65,8 @@ EOF
 
 	echo "#include \"gen.h\"" >&2
 
-	gen prog_particle_update particle.cl
+	gen prog_particle_init particle_init.cl
+	gen prog_particle_update particle_update.cl
 
 	gen prog_particle_render_vert particle_render.vert
 	gen prog_particle_render_frag particle_render.frag

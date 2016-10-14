@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/14 14:45:25 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/14 18:13:43 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -312,10 +312,14 @@ public:
 		: _particule_count(particle_count),
 		_cl_context(context),
 
+		_init_program(get_program(_cl_context, prog_particle_init)),
 		_update_program(get_program(_cl_context, prog_particle_update)),
-		_init_square_kernel(_update_program, "init_square"),
-		_init_sphere_kernel(_update_program, "init_sphere"),
-		_init_cube_kernel(_update_program, "init_cube"),
+		_init_square_kernel(_init_program, "init_square"),
+		_init_sphere_kernel(_init_program, "init_sphere"),
+		_init_cube_kernel(_init_program, "init_cube"),
+		_init_sphere_rand_kernel(_init_program, "init_rand_sphere"),
+		_init_cube_rand_kernel(_init_program, "init_rand_cube"),
+
 		_update_kernel(_update_program, "update"),
 		_explode_kernel(_update_program, "explode"),
 
@@ -337,9 +341,12 @@ public:
 		auto	p_vertices = cl_acquire(queue, _particle_vertices);
 
 		// _init_square_kernel.make_work<1>(_particule_count)
-		_init_sphere_kernel.make_work<1>(_particule_count)
+		// _init_sphere_kernel.make_work<1>(_particule_count)
 		// _init_cube_kernel.make_work<1>(_particule_count)
-				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
+				// (queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
+		// _init_sphere_rand_kernel.make_work<1>(_particule_count)
+		_init_cube_rand_kernel.make_work<1>(_particule_count)
+				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
 	}
 
 	void			set_matrix(glm::mat4 const &m)
@@ -382,10 +389,13 @@ private:
 
 	cl_context		_cl_context;
 
+	cl_program			_init_program;
 	cl_program			_update_program;
 	ClKernel<cl_mem, cl_mem>	_init_square_kernel;
 	ClKernel<cl_mem, cl_mem>	_init_sphere_kernel;
 	ClKernel<cl_mem, cl_mem>	_init_cube_kernel;
+	ClKernel<cl_mem, cl_mem, cl_uint>	_init_sphere_rand_kernel;
+	ClKernel<cl_mem, cl_mem, cl_uint>	_init_cube_rand_kernel;
 	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_kernel;
 	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_explode_kernel;
 
@@ -521,6 +531,10 @@ public:
 			_look_at_controller.press(f->second);
 		else if (key == 75)
 			_particle_system.explode(2.f);
+		else if (key == 76)
+			_particle_system.explode(-1.f);
+		else
+			ft::f(std::cout, "KEY PRESS %\n", key);
 	}
 
 	virtual void	on_key_release(int key, int, int)
