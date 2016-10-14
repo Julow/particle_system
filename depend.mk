@@ -1,13 +1,11 @@
-O_FILES += $(O_DIR)/srcs/main/particle.cl.o
 INCLUDE_FLAGS += -I$(O_DIR)/_public
 MAINS += particle_system
 OBJ_DIR_TREE += $(O_DIR)/srcs/main/ $(O_DIR)/srcs/ $(O_DIR)/_public/ft/ \
 	$(O_DIR)/_public/ $(O_DIR)/
 O_FILES += $(O_DIR)/srcs/main/ClContextProxy.o \
-	$(O_DIR)/srcs/main/GlfwWindowProxy.o $(O_DIR)/srcs/main/main.o
+	$(O_DIR)/srcs/main/GlfwWindowProxy.o $(O_DIR)/srcs/main/gen.o \
+	$(O_DIR)/srcs/main/main.o
 PUBLIC_LINKS += $(O_DIR)/_public/ft/cl.h $(O_DIR)/_public/ft/gl.h
-
-particle_system: $(O_FILES)
 
 # module ft::cl
 ifeq ($(shell uname),Darwin)
@@ -30,21 +28,22 @@ $(O_DIR)/srcs/main/ClContextProxy.o: srcs/main/ClContextProxy.cpp \
 	srcs/ft_cl/cl.h srcs/main/ClContextProxy.hpp srcs/main/f.hpp
 $(O_DIR)/srcs/main/GlfwWindowProxy.o: srcs/main/GlfwWindowProxy.cpp \
 	libft/ft_gl/gl.h srcs/main/GlfwWindowProxy.hpp srcs/main/opt.hpp
+$(O_DIR)/srcs/main/gen.o: srcs/main/gen.cpp srcs/main/gen.h
 $(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
 	srcs/main/ClBuffer.hpp srcs/main/ClBuffer.tpp srcs/main/ClContextProxy.hpp \
 	srcs/main/ClGlBuffer.hpp srcs/main/ClGlBuffer.tpp srcs/main/ClKernel.hpp \
 	srcs/main/ClKernel.tpp srcs/main/FpsCounter.hpp srcs/main/FpsCounter.tpp \
 	srcs/main/GlBuffer.hpp srcs/main/GlBuffer.tpp \
-	srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp srcs/main/gl_utils.hpp \
-	srcs/main/opt.hpp srcs/main/particule.cl.h
+	srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp srcs/main/gen.h \
+	srcs/main/gl_utils.hpp srcs/main/opt.hpp srcs/main/particule.cl.h
 
 $(O_DIR)/srcs/main/ClContextProxy.o $(O_DIR)/srcs/main/GlfwWindowProxy.o \
-$(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += -Isrcs/main
+$(O_DIR)/srcs/main/gen.o $(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += \
+	-Isrcs/main
+
+
+particle_system: $(O_FILES)
 
 # public links
 $(O_DIR)/_public/ft/cl.h: srcs/ft_cl/cl.h
 $(O_DIR)/_public/ft/gl.h: libft/ft_gl/gl.h
-
-$(O_DIR)/srcs/main/particle.cl.o: $(O_DIR)/srcs/main/particle.cl.c
-$(O_DIR)/srcs/main/particle.cl.c: srcs/main/particle.cl
-	./cl_gen.py "$<" "$@"

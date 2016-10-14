@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 19:41:41 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/14 14:45:25 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -299,52 +299,11 @@ private:
 #include "ClBuffer.hpp"
 #include "ClGlBuffer.hpp"
 #include "GlBuffer.hpp"
+#include "gen.h"
 #include "particule.cl.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
-extern char const *const	cl_program_particle;
-
-std::vector<shader_info>	gl_program_particle = {
-	{GL_VERTEX_SHADER,
-		"#version 410 core\n"
-		""
-		"layout (location = 0) in vec4		buff_pos;"
-		"layout (location = 1) in vec4		buff_color;"
-		""
-		"uniform mat4	u_matrix;"
-		""
-		"out vec4		p_color;"
-		"\n"
-		"#define PARTICLE_SIZE		1.f\n"
-		""
-		"void		main()"
-		"{"
-		"	p_color = buff_color;"
-		"	gl_Position = u_matrix * buff_pos;"
-		""
-		"	float		p_size = PARTICLE_SIZE / gl_Position.w;"
-		""
-		"	if (p_size < 1.f)"
-		"	{"
-		"		p_color *= p_size;"
-		// "		p_color *= p_size * p_size;"
-		// "		p_color *= sqrt(p_size);"
-		"		gl_PointSize = 1.f;"
-		"	}"
-		"	else"
-		"		gl_PointSize = p_size;"
-		"}"
-	},
-
-	{GL_FRAGMENT_SHADER,
-		"#version 410 core\n"
-		"in vec4		p_color;"
-		"out vec4		color;"
-		"void		main() { color = p_color; }"
-	},
-};
 
 class	ParticleSystem
 {
@@ -353,14 +312,17 @@ public:
 		: _particule_count(particle_count),
 		_cl_context(context),
 
-		_update_program(get_program(_cl_context, cl_program_particle)),
+		_update_program(get_program(_cl_context, prog_particle_update)),
 		_init_square_kernel(_update_program, "init_square"),
 		_init_sphere_kernel(_update_program, "init_sphere"),
 		_init_cube_kernel(_update_program, "init_cube"),
 		_update_kernel(_update_program, "update"),
 		_explode_kernel(_update_program, "explode"),
 
-		_render_program(get_shaders(gl_program_particle)),
+		_render_program(get_shaders({
+				{GL_VERTEX_SHADER, prog_particle_render_vert},
+				{GL_FRAGMENT_SHADER, prog_particle_render_frag},
+			})),
 		_uniform_matrix(_render_program, "u_matrix"),
 
 		_particle_vertices(_cl_context, _particule_count, nullptr),
@@ -375,8 +337,8 @@ public:
 		auto	p_vertices = cl_acquire(queue, _particle_vertices);
 
 		// _init_square_kernel.make_work<1>(_particule_count)
-		// _init_sphere_kernel.make_work<1>(_particule_count)
-		_init_cube_kernel.make_work<1>(_particule_count)
+		_init_sphere_kernel.make_work<1>(_particule_count)
+		// _init_cube_kernel.make_work<1>(_particule_count)
 				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
 	}
 

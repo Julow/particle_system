@@ -3,3 +3,5 @@ main module particle_system:
 
 	require ft::cl
 	require ft::gl
+
+	on_gen exec "$MODULE_DIR/gen.sh"
