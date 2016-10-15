@@ -6,7 +6,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/14 18:15:20 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/15 18:52:44 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ void				_init_particle(__global p_vertex *dst_vertex,
 	dst_vertex->color = mix((float4){0.1f, 0.8f, 0.8f, 1.f},
 			(float4){0.9f, 0.8f, 0.2f, 1.f}, w);
 	dst_info->velocity = (float4){0.f, 0.f, 0.f, 0.f};
-	dst_info->mass = 1.f;
+	// dst_info->mass = 1.f;
 }
 
 __kernel void		init_square(__global p_vertex *vertex,

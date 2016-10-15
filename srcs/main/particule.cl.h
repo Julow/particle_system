@@ -6,7 +6,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/07 16:22:34 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/13 12:52:54 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/15 18:52:32 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,8 +44,6 @@ struct	p_vertex
 struct	p_info
 {
 	vec4		velocity;
-	float		mass;
-	float		_pad[3];
 };
 
 # ifndef __OPENCL_C_VERSION__
