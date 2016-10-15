@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/12 17:38:53 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 12:16:58 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/15 11:39:29 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -99,18 +99,19 @@ float		FpsCounter<C, R>::get_global_fps() const
 {
 	s_duration_t const	delta = _last_update - _global.begin;
 
-	return (_global.count / delta.count());
+	return ((_global.count + _frames[_i].count) / delta.count());
 }
 
 template<typename C, unsigned R>
 std::tuple<float, float, float>
 			FpsCounter<C, R>::get_global_stats() const
 {
-	s_duration_t const	min_t = _global.min_t;
-	s_duration_t const	max_t = _global.max_t;
-	s_duration_t const	total_t = _global.total_t;
+	s_duration_t const	min_t = _global.min_t + _frames[_i].min_t;
+	s_duration_t const	max_t = _global.max_t + _frames[_i].max_t;
+	s_duration_t const	total_t = _global.total_t + _frames[_i].total_t;
+	unsigned const		total_count = _global.count + _frames[_i].count;
 
-	return {min_t.count(), max_t.count(), total_t.count() / _global.count};
+	return {min_t.count(), max_t.count(), total_t.count() / total_count};
 }
 
 #endif
