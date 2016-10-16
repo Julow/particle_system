@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/14 18:13:43 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/16 19:21:17 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -330,7 +330,9 @@ public:
 		_uniform_matrix(_render_program, "u_matrix"),
 
 		_particle_vertices(_cl_context, _particule_count, nullptr),
-		_particle_infos(_cl_context, _particule_count)
+		_particle_infos(_cl_context, _particule_count),
+
+		_center{{0.f, 0.f, 0.f, 0.f}}
 
 	{}
 
@@ -347,6 +349,11 @@ public:
 		// _init_sphere_rand_kernel.make_work<1>(_particule_count)
 		_init_cube_rand_kernel.make_work<1>(_particule_count)
 				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
+	}
+
+	void			set_center(glm::vec3 const &center)
+	{
+		_center = {{center.x, center.y, center.z, 0.f}};
 	}
 
 	void			set_matrix(glm::mat4 const &m)
@@ -367,13 +374,12 @@ public:
 		{
 			_explode_kernel.make_work<1>(_particule_count)
 					(queue, std::get<0>(p_vertices).get_handle(),
-						_particle_infos.get_handle(),
-						{{0.f, 0.f, 0.f}}, *_explode);
+						_particle_infos.get_handle(), _center, *_explode);
 			_explode = std::nullopt;
 		}
 		_update_kernel.make_work<1>(_particule_count)
 				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(),
-						{{0.f, 0.f, 0.f}}, delta_t);
+						_center, delta_t);
 	}
 
 	void			render()
@@ -410,6 +416,8 @@ private:
 
 	ClBuffer<particule::p_info>	_particle_infos;
 
+	cl_float4				_center;
+
 	std::optional<float>	_explode;
 
 private:
@@ -427,6 +435,14 @@ private:
 #include "FpsCounter.hpp"
 #include <iomanip>
 
+static float	get_window_ratio(GlfwWindowProxy const &w)
+{
+	unsigned		width, height;
+
+	std::tie(width, height) = w.get_window_size();
+	return (width / (float)height);
+}
+
 class	Main final : GlfwWindowProxy, ClContextProxy
 {
 public:
@@ -436,12 +452,11 @@ public:
 		GlfwWindowProxy(std::nullopt, "lol"),
 		ClContextProxy(true),
 		_look_at_controller(),
-		_particle_system(get_context(), 200000),
+		_particle_system(get_context(), 3000000),
 		_cl_fps(),
 		_gl_fps(),
 
-		_m_proj(glm::perspective(65.f,
-			get_window_width() / (float)get_window_height(), 0.01f, 1000.f)),
+		_m_proj(glm::perspective(90.f, get_window_ratio(*this), 0.01f, 1000.f)),
 		_camera_dist(1.5f)
 
 	{
@@ -543,6 +558,16 @@ public:
 
 		if (f != _keys.end())
 			_look_at_controller.release(f->second);
+	}
+
+	virtual void	on_cursor_move(double x, double y)
+	{
+		unsigned		w_width, w_height;
+
+		std::tie(w_width, w_height) = get_window_size();
+		_particle_system.set_center({
+			(x / w_width * 2.f - 1.f) * -2.f * (w_width / (float)w_height),
+			(y / w_height * 2.f - 1.f) * -2.f, 0.f});
 	}
 
 private:

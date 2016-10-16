@@ -7,7 +7,7 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 12:55:11 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/14 17:09:39 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/16 17:25:41 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,10 +22,10 @@ out vec4		p_color;
 
 void		main()
 {
-	vec4		p_pos = u_matrix * normalize(buff_pos);
+	vec4		p_pos = u_matrix * buff_pos;
 	float		p_size = PARTICLE_SIZE / p_pos.w;
 
-	p_color = buff_color * min(1.f, p_size); // ^2 ? sqrt ?
+	p_color = buff_color * min(1.f, p_size);
 	gl_Position = p_pos;
 	gl_PointSize = max(1.f, p_size);
 }
