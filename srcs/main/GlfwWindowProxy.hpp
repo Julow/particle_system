@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:49:09 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 19:13:57 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/16 18:06:46 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -37,8 +37,12 @@ public:
 
 	GLFWwindow		*get_window();
 
-	unsigned		get_window_width();
-	unsigned		get_window_height();
+	/*
+	** Return the window size as {width, height} pair
+	** If 'pixel' is true, the size is in pixel,
+	**  otherwise the size is in screen coordinate
+	*/
+	std::pair<unsigned, unsigned>	get_window_size(bool pixel = false) const;
 
 protected:
 	/*
@@ -86,9 +90,6 @@ protected:
 
 private:
 	GLFWwindow		*_window;
-
-	unsigned		_width;
-	unsigned		_height;
 
 private: // static
 	static void		init();

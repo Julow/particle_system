@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/05 13:48:59 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/10 23:29:34 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/16 18:06:18 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -74,13 +74,15 @@ GlfwWindowProxy::GlfwWindowProxy(
 			&GlfwWindowProxy::c_win_framebuffer_size);
 	glfwSetWindowUserPointer(_window, this);
 	glfwMakeContextCurrent(_window);
-	glfwGetFramebufferSize(_window, (int*)&_width, (int*)&_height);
 	if (!INIT_GLEW)
 	{
 		deinit();
 		throw std::runtime_error("Failed to init GLEW");
 	}
-	glViewport(0, 0, _width, _height);
+	{
+		auto size = get_window_size(true);
+		glViewport(0, 0, size.first, size.second);
+	}
 }
 
 GlfwWindowProxy::~GlfwWindowProxy()
@@ -91,8 +93,18 @@ GlfwWindowProxy::~GlfwWindowProxy()
 
 GLFWwindow		*GlfwWindowProxy::get_window() { return (_window); }
 
-unsigned		GlfwWindowProxy::get_window_width() { return (_width); }
-unsigned		GlfwWindowProxy::get_window_height() { return (_height); }
+std::pair<unsigned, unsigned>
+				GlfwWindowProxy::get_window_size(bool pixel) const
+{
+	int				width;
+	int				height;
+
+	if (pixel)
+		glfwGetFramebufferSize(_window, &width, &height);
+	else
+		glfwGetWindowSize(_window, &width, &height);
+	return (std::make_pair(width, height));
+}
 
 void			GlfwWindowProxy::init()
 {
