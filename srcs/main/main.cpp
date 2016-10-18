@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/16 19:21:17 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/18 16:04:15 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -229,70 +229,6 @@ private:
 
 /*
 ** ========================================================================== **
-** LookAtController
-*/
-
-class	LookAtController
-{
-public:
-	enum flag
-	{
-		UP = 1 << 0,
-		RIGHT = 1 << 1,
-		DOWN = 1 << 2,
-		LEFT = 1 << 3,
-	};
-
-	LookAtController()
-		: _flags(0), _look_at(0.f, M_PI/2.f)
-	{}
-
-	virtual ~LookAtController() {}
-
-	void				press(flag k) { _flags |= k; }
-	void				release(flag k) { _flags &= ~k; }
-
-	glm::vec3			get_look_at() const
-	{
-		return (glm::vec3(
-				cos(_look_at.x) * cos(_look_at.y),
-				sin(_look_at.x),
-				cos(_look_at.x) * sin(-_look_at.y)
-			));
-	}
-
-	bool				update(float delta_t)
-	{
-		glm::vec2			d(0.f, 0.f);
-
-		if (!(_flags & (UP | RIGHT | DOWN | LEFT)))
-			return (false);
-		if (_flags & UP)
-			d.x += 1.f;
-		else if (_flags & RIGHT)
-			d.y -= 1.f;
-		else if (_flags & DOWN)
-			d.x -= 1.f;
-		else if (_flags & LEFT)
-			d.y += 1.f;
-		_look_at += d * delta_t;
-		return (true);
-	}
-
-private:
-	unsigned			_flags;
-
-	glm::vec2			_look_at;
-
-private:
-	LookAtController(LookAtController &&src) = delete;
-	LookAtController(LookAtController const &src) = delete;
-	LookAtController	&operator=(LookAtController &&rhs) = delete;
-	LookAtController	&operator=(LookAtController const &rhs) = delete;
-};
-
-/*
-** ========================================================================== **
 ** ParticleSystem
 */
 
@@ -433,6 +369,8 @@ private:
 */
 
 #include "FpsCounter.hpp"
+#include "polymorphic_union.hpp"
+
 #include <iomanip>
 
 static float	get_window_ratio(GlfwWindowProxy const &w)
@@ -451,18 +389,22 @@ public:
 	Main() :
 		GlfwWindowProxy(std::nullopt, "lol"),
 		ClContextProxy(true),
-		_look_at_controller(),
 		_particle_system(get_context(), 3000000),
 		_cl_fps(),
 		_gl_fps(),
 
+		_hold_keys(0),
+
 		_m_proj(glm::perspective(90.f, get_window_ratio(*this), 0.01f, 1000.f)),
+
+		_look_at(0.f, M_PI/2.f),
+		_look_at_vec(0.f, 0.f, -1.f),
 		_camera_dist(1.5f)
 
 	{
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_PROGRAM_POINT_SIZE);
-		update_camera();
+		_set_matrix();
 	}
 
 	virtual ~Main() {}
@@ -507,14 +449,53 @@ public:
 
 			glfwSwapBuffers(get_window());
 
-			if (_look_at_controller.update(delta_t.count()))
-				update_camera();
+			_update_input(delta_t.count());
 			glfwPollEvents();
 		}
 		_print_stats("\033[33mavg gl", _gl_fps.get_global_fps(), _gl_fps.get_global_stats());
 		_print_stats("\033[32mavg cl", _cl_fps.get_global_fps(), _cl_fps.get_global_stats());
 	}
 
+protected:
+	virtual void	on_key_press(int key, int, int)
+	{
+		auto const		f = _key_map.find({key, 0});
+
+		if (f != _key_map.end())
+			f->second->press(*this);
+		else
+			ft::f(std::cout, "KEY PRESS %\n", key);
+	}
+
+	virtual void	on_key_release(int key, int, int)
+	{
+		auto const		f = _key_map.find({key, 0});
+
+		if (f != _key_map.end())
+			f->second->release(*this);
+	}
+
+	virtual void	on_cursor_move(double x, double y)
+	{
+		unsigned		w_width, w_height;
+
+		std::tie(w_width, w_height) = get_window_size();
+		_particle_system.set_center({ // TODO: handle variable camera_dist
+			(x / w_width * 2.f - 1.f) * -1.f * _camera_dist * (w_width / (float)w_height),
+			(y / w_height * 2.f - 1.f) * -1.f * _camera_dist, 0.f});
+	}
+
+private:
+	void			_set_matrix()
+	{
+		_particle_system.set_matrix(_m_proj * glm::lookAt(
+					_look_at_vec * _camera_dist,
+					glm::vec3(0.f, 0.f, 0.f),
+					glm::vec3(0.f, 1.f, 0.f)
+				));
+	}
+
+private:
 	void			_print_stats(char const *name, float fps,
 						std::tuple<float, float, float> const &stats)
 	{
@@ -528,60 +509,126 @@ public:
 				std::setprecision(6), std::fixed, avg);
 	}
 
-	void			update_camera()
+	bool			_update_look_at(float delta_t)
 	{
-		glm::mat4 const	m_view = glm::lookAt(
-				_look_at_controller.get_look_at() * _camera_dist,
-				glm::vec3(0.f, 0.f, 0.f),
-				glm::vec3(0.f, 1.f, 0.f));
+		auto	rad_mod = [](float a){
+			return (std::fmod(a, M_PI - M_PI/2.f));
+		};
 
-		_particle_system.set_matrix(_m_proj * m_view);
+		if (!(_hold_keys & (HOLD_KEY_UP | HOLD_KEY_RIGHT
+					| HOLD_KEY_DOWN | HOLD_KEY_LEFT)))
+			return (false);
+		if (_hold_keys & HOLD_KEY_UP)
+			_look_at.x = rad_mod(_look_at.x + delta_t);
+		if (_hold_keys & HOLD_KEY_RIGHT)
+			_look_at.y = rad_mod(_look_at.y - delta_t);
+		if (_hold_keys & HOLD_KEY_DOWN)
+			_look_at.x = rad_mod(_look_at.x - delta_t);
+		if (_hold_keys & HOLD_KEY_LEFT)
+			_look_at.y = rad_mod(_look_at.y + delta_t);
+		return (true);
 	}
 
-	virtual void	on_key_press(int key, int, int)
+	bool			_update_look_at_vec(float delta_t)
 	{
-		auto const		f = _keys.find(key);
-
-		if (f != _keys.end())
-			_look_at_controller.press(f->second);
-		else if (key == 75)
-			_particle_system.explode(2.f);
-		else if (key == 76)
-			_particle_system.explode(-1.f);
-		else
-			ft::f(std::cout, "KEY PRESS %\n", key);
+		if (!_update_look_at(delta_t))
+			return (false);
+		_look_at_vec = glm::vec3(
+			cos(_look_at.x) * cos(_look_at.y),
+			sin(_look_at.x),
+			cos(_look_at.x) * sin(-_look_at.y)
+		);
+		return (true);
 	}
 
-	virtual void	on_key_release(int key, int, int)
+	bool			_update_camera_dist(float delta_t)
 	{
-		auto const		f = _keys.find(key);
-
-		if (f != _keys.end())
-			_look_at_controller.release(f->second);
+		if (!(_hold_keys & (HOLD_KEY_BACK | HOLD_KEY_FRONT)))
+			return (false);
+		if (_hold_keys & HOLD_KEY_BACK)
+			_camera_dist -= delta_t;
+		if (_hold_keys & HOLD_KEY_FRONT)
+			_camera_dist += delta_t;
+		return (true);
 	}
 
-	virtual void	on_cursor_move(double x, double y)
+	bool			_update_viewproj(float delta_t)
 	{
-		unsigned		w_width, w_height;
+		if (!(_update_look_at_vec(delta_t) | _update_camera_dist(delta_t)))
+			return (false);
+		_set_matrix();
+		return (true);
+	}
 
-		std::tie(w_width, w_height) = get_window_size();
-		_particle_system.set_center({
-			(x / w_width * 2.f - 1.f) * -2.f * (w_width / (float)w_height),
-			(y / w_height * 2.f - 1.f) * -2.f, 0.f});
+	void			_update_input(float delta_t)
+	{
+		_update_viewproj(delta_t); // TODO: call only if needed
 	}
 
 private:
-	LookAtController		_look_at_controller;
+	enum	hold_key
+	{
+		HOLD_KEY_UP = 1 << 0,
+		HOLD_KEY_RIGHT = 1 << 1,
+		HOLD_KEY_DOWN = 1 << 2,
+		HOLD_KEY_LEFT = 1 << 3,
+		HOLD_KEY_BACK = 1 << 4,
+		HOLD_KEY_FRONT = 1 << 5,
+	};
 
+	struct	_key_handler
+	{
+		virtual ~_key_handler() {}
+		virtual void		press(Main&) const {};
+		virtual void		release(Main&) const {};
+	};
+
+	struct	key_hold : _key_handler
+	{
+		key_hold(Main::hold_key k) :
+			_k(k)
+		{}
+
+		virtual ~key_hold() {}
+
+		virtual void		press(Main &m) const { m._hold_keys |= _k; };
+		virtual void		release(Main &m)  const{ m._hold_keys &= ~_k; };
+
+		Main::hold_key		_k;
+	};
+
+	struct	key_callback : _key_handler
+	{
+		typedef std::function<void (Main&)>		callback_t;
+
+		key_callback(callback_t callback) :
+			_callback(callback)
+		{}
+
+		virtual ~key_callback() {}
+
+		virtual void		press(Main &m) const { _callback(m); };
+
+		callback_t			_callback;
+	};
+
+	typedef polymorphic_union<_key_handler, key_hold, key_callback>	key_handler;
+
+private:
 	ParticleSystem			_particle_system;
 
 	FpsCounter<std_clock, 1>	_cl_fps;
 	FpsCounter<std_clock, 1>	_gl_fps;
 
+	unsigned				_hold_keys;
+
 	glm::mat4				_m_proj;
+
+	glm::vec2				_look_at;
+	glm::vec3				_look_at_vec;
 	float					_camera_dist;
 
-	static std::map<int, LookAtController::flag> const	_keys;
+	static std::map<std::pair<int, int>, key_handler> const	_key_map;
 
 private:
 	Main(Main &&src) = delete;
@@ -590,11 +637,15 @@ private:
 	Main			&operator=(Main const &rhs) = delete;
 };
 
-std::map<int, LookAtController::flag> const	Main::_keys = {
-	{265, LookAtController::UP},
-	{262, LookAtController::RIGHT},
-	{264, LookAtController::DOWN},
-	{263, LookAtController::LEFT},
+std::map<std::pair<int, int>, Main::key_handler> const	Main::_key_map = {
+	{{265, 0}, Main::key_hold(Main::HOLD_KEY_UP)},
+	{{262, 0}, Main::key_hold(Main::HOLD_KEY_RIGHT)},
+	{{264, 0}, Main::key_hold(Main::HOLD_KEY_DOWN)},
+	{{263, 0}, Main::key_hold(Main::HOLD_KEY_LEFT)},
+	{{83, 0}, Main::key_hold(Main::HOLD_KEY_FRONT)},
+	{{87, 0}, Main::key_hold(Main::HOLD_KEY_BACK)},
+	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(2.f); })},
+	{{76, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(-1.f); })},
 };
 
 int				main()

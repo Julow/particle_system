@@ -9,7 +9,7 @@ char const		prog_particle_init[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/16 18:36:10 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/15 18:52:44 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -188,7 +188,7 @@ char const		prog_particle_update[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/16 18:56:53 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/16 19:24:49 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -262,7 +262,6 @@ __kernel void		update(__global p_vertex *vertex, __global p_info *info,
 	float4 const		r_mid = center - pos_mid;
 	float const			r_mid_sq = dot(r_mid, r_mid);
 	float4 const		acc_mid = G * center_mass / (r_mid_sq + 0.5f) * r_mid;
-	// float4 const		acc_mid = G * center_mass / max(1.f, r_mid_sq) * r_mid;
 
 	float4 const		vel_1 = vel_0 + acc_mid * delta_t;
 	float4				pos_1 = pos_0 + (vel_0 + vel_1) * mid_delta_t;
