@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/12 17:38:53 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/15 11:39:29 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/16 22:53:30 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -91,7 +91,8 @@ std::tuple<float, float, float>
 		total_t += f.total_t;
 		count += f.count;
 	}
-	return {min_t.count(), max_t.count(), total_t.count() / count};
+	return std::make_tuple(min_t.count(), max_t.count(),
+			total_t.count() / count);
 }
 
 template<typename C, unsigned R>
@@ -111,7 +112,8 @@ std::tuple<float, float, float>
 	s_duration_t const	total_t = _global.total_t + _frames[_i].total_t;
 	unsigned const		total_count = _global.count + _frames[_i].count;
 
-	return {min_t.count(), max_t.count(), total_t.count() / total_count};
+	return std::make_tuple(min_t.count(), max_t.count(),
+			total_t.count() / total_count);
 }
 
 #endif

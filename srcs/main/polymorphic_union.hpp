@@ -6,12 +6,14 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/17 18:38:59 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/18 12:36:23 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/18 22:06:25 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef POLYMORPHIC_UNION_HPP
 # define POLYMORPHIC_UNION_HPP
+
+# include <algorithm>
 
 namespace std // TODO: move
 {

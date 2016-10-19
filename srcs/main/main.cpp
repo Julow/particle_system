@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/18 16:04:15 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/19 16:27:59 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -18,6 +18,7 @@
 #include "GlfwWindowProxy.hpp"
 #include "f.hpp"
 
+#include <ctime>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -457,9 +458,9 @@ public:
 	}
 
 protected:
-	virtual void	on_key_press(int key, int, int)
+	virtual void	on_key_press(int key, int, int mods)
 	{
-		auto const		f = _key_map.find({key, 0});
+		auto const		f = _key_map.find({key, mods});
 
 		if (f != _key_map.end())
 			f->second->press(*this);
@@ -467,9 +468,9 @@ protected:
 			ft::f(std::cout, "KEY PRESS %\n", key);
 	}
 
-	virtual void	on_key_release(int key, int, int)
+	virtual void	on_key_release(int key, int, int mods)
 	{
-		auto const		f = _key_map.find({key, 0});
+		auto const		f = _key_map.find({key, mods});
 
 		if (f != _key_map.end())
 			f->second->release(*this);
@@ -646,6 +647,7 @@ std::map<std::pair<int, int>, Main::key_handler> const	Main::_key_map = {
 	{{87, 0}, Main::key_hold(Main::HOLD_KEY_BACK)},
 	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(2.f); })},
 	{{76, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(-1.f); })},
+	{{81, 0}, Main::key_callback([](Main &m){ glfwSetWindowShouldClose(m.get_window(), true); })},
 };
 
 int				main()
