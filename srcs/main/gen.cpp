@@ -188,7 +188,7 @@ char const		prog_particle_update[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/16 19:24:49 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/20 19:32:28 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -245,7 +245,7 @@ struct	p_info
 
 #endif
 
-__kernel void		update(__global p_vertex *vertex, __global p_info *info,
+__kernel void		update_gravity(__global p_vertex *vertex, __global p_info *info,
 						float4 center, float delta_t)
 {
 	uint const			id = get_global_id(0);
@@ -268,6 +268,29 @@ __kernel void		update(__global p_vertex *vertex, __global p_info *info,
 
 	pos_1.w = 1.f;
 	vertex[id].pos = pos_1;
+	info[id].velocity = vel_1;
+}
+
+__kernel void		update_spring(__global p_vertex *vertex,
+						__global p_info *info, float4 center, float delta_t)
+{
+	uint const			id = get_global_id(0);
+
+	float4 const		vel_0 = info[id].velocity;
+	float4 const		pos_0 = vertex[id].pos;
+
+	float const			K = 5.f;
+	float const			spring_len = 0.f;
+	float const			mass = 1.f;
+
+	float4 const		r = pos_0 - center;
+	float const			r_len = length(r);
+	float4 const		acc = r * (-K / mass * (r_len - spring_len) / r_len);
+
+	float4 const		vel_1 = vel_0 + acc * delta_t;
+	float4 const		pos_1 = pos_0 + vel_1 * delta_t;
+
+	vertex[id].pos = (float4){pos_1.x, pos_1.y, pos_1.z, 1.f};
 	info[id].velocity = vel_1;
 }
 
@@ -325,8 +348,8 @@ char const		prog_particle_render_frag[] = R"(
 /*                                                    +:+ +:+         +:+     */
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/10/14 12:58:27 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/14 13:53:35 by jaguillo         ###   ########.fr       */
+/*   Created: 2016/10/20 15:52:06 by jaguillo          #+#    #+#             */
+/*   Updated: 2016/10/20 19:02:30 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -334,8 +357,13 @@ in vec4			p_color;
 
 out vec4		color;
 
-void		main()
-{
-	color = p_color;
-}
+// void		main()
+// {
+// 	vec2		r = gl_PointCoord - vec2(0.5f, 0.5f);
+
+// 	color = p_color;
+// 	gl_FragDepth = (dot(r, r) > 0.5f*0.5f) ? 255.f : gl_FragCoord.z;
+// }
+
+void		main() { color = p_color; }
 )";

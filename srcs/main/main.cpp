@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/19 16:27:59 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/20 19:33:12 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -257,7 +257,8 @@ public:
 		_init_sphere_rand_kernel(_init_program, "init_rand_sphere"),
 		_init_cube_rand_kernel(_init_program, "init_rand_cube"),
 
-		_update_kernel(_update_program, "update"),
+		_update_gravity_kernel(_update_program, "update_gravity"),
+		_update_spring_kernel(_update_program, "update_spring"),
 		_explode_kernel(_update_program, "explode"),
 
 		_render_program(get_shaders({
@@ -280,12 +281,12 @@ public:
 		auto	p_vertices = cl_acquire(queue, _particle_vertices);
 
 		// _init_square_kernel.make_work<1>(_particule_count)
-		// _init_sphere_kernel.make_work<1>(_particule_count)
+		_init_sphere_kernel.make_work<1>(_particule_count)
 		// _init_cube_kernel.make_work<1>(_particule_count)
-				// (queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
+				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
 		// _init_sphere_rand_kernel.make_work<1>(_particule_count)
-		_init_cube_rand_kernel.make_work<1>(_particule_count)
-				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
+		// _init_cube_rand_kernel.make_work<1>(_particule_count)
+				// (queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
 	}
 
 	void			set_center(glm::vec3 const &center)
@@ -314,7 +315,9 @@ public:
 						_particle_infos.get_handle(), _center, *_explode);
 			_explode = std::nullopt;
 		}
-		_update_kernel.make_work<1>(_particule_count)
+		_update_spring_kernel
+		// _update_gravity_kernel
+				.make_work<1>(_particule_count)
 				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(),
 						_center, delta_t);
 	}
@@ -339,7 +342,8 @@ private:
 	ClKernel<cl_mem, cl_mem>	_init_cube_kernel;
 	ClKernel<cl_mem, cl_mem, cl_uint>	_init_sphere_rand_kernel;
 	ClKernel<cl_mem, cl_mem, cl_uint>	_init_cube_rand_kernel;
-	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_kernel;
+	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_gravity_kernel;
+	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_spring_kernel;
 	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_explode_kernel;
 
 	GLuint			_render_program;
@@ -396,6 +400,8 @@ public:
 
 		_hold_keys(0),
 
+		_pause(false),
+
 		_m_proj(glm::perspective(90.f, get_window_ratio(*this), 0.01f, 1000.f)),
 
 		_look_at(0.f, M_PI/2.f),
@@ -431,12 +437,12 @@ public:
 			last_frame = now;
 
 			_cl_fps.begin(now);
+			if (!_pause)
 			{
 				_particle_system.update(get_queue(), delta_t.count());
 				clFinish(get_queue());
 			}
-			if (_cl_fps.end())
-				_print_stats("\033[92mcl", _cl_fps.get_fps(), _cl_fps.get_stats());
+			_cl_fps.end();
 
 			_gl_fps.begin();
 			{ // render particles
@@ -446,7 +452,10 @@ public:
 				glFinish();
 			}
 			if (_gl_fps.end())
+			{
 				_print_stats("\033[93mgl", _gl_fps.get_fps(), _gl_fps.get_stats());
+				_print_stats("\033[92mcl", _cl_fps.get_fps(), _cl_fps.get_stats());
+			}
 
 			glfwSwapBuffers(get_window());
 
@@ -503,30 +512,28 @@ private:
 		float		min, max, avg;
 
 		std::tie(min, max, avg) = stats;
-		ft::f(std::cout, " % %%% fps; min=%%%; max=%%%; avg=%%%\033[0m\n", name,
+		ft::f(std::cout, "%% fps: %%%; min/max/avg (ms): %%%%  %%%%  %%%%\033[0m\n",
+				std::setw(11), std::string(name),
 				std::setprecision(3), std::fixed, fps,
-				std::setprecision(6), std::fixed, min,
-				std::setprecision(6), std::fixed, max,
-				std::setprecision(6), std::fixed, avg);
+				std::setw(6), std::setprecision(1), std::fixed, min * 1000.f,
+				std::setw(6), std::setprecision(1), std::fixed, max * 1000.f,
+				std::setw(6), std::setprecision(1), std::fixed, avg * 1000.f);
 	}
 
 	bool			_update_look_at(float delta_t)
 	{
-		auto	rad_mod = [](float a){
-			return (std::fmod(a, M_PI - M_PI/2.f));
-		};
-
 		if (!(_hold_keys & (HOLD_KEY_UP | HOLD_KEY_RIGHT
 					| HOLD_KEY_DOWN | HOLD_KEY_LEFT)))
 			return (false);
 		if (_hold_keys & HOLD_KEY_UP)
-			_look_at.x = rad_mod(_look_at.x + delta_t);
+			_look_at.x = std::min(_look_at.x + delta_t, (float)M_PI/2.f);
 		if (_hold_keys & HOLD_KEY_RIGHT)
-			_look_at.y = rad_mod(_look_at.y - delta_t);
+			_look_at.y = _look_at.y - delta_t;
 		if (_hold_keys & HOLD_KEY_DOWN)
-			_look_at.x = rad_mod(_look_at.x - delta_t);
+			_look_at.x = std::max(_look_at.x - delta_t, (float)-M_PI/2.f);
 		if (_hold_keys & HOLD_KEY_LEFT)
-			_look_at.y = rad_mod(_look_at.y + delta_t);
+			_look_at.y = _look_at.y + delta_t;
+		ft::f(std::cout, "X % Y %\n", _look_at.x, _look_at.y);
 		return (true);
 	}
 
@@ -623,6 +630,8 @@ private:
 
 	unsigned				_hold_keys;
 
+	bool					_pause;
+
 	glm::mat4				_m_proj;
 
 	glm::vec2				_look_at;
@@ -648,6 +657,7 @@ std::map<std::pair<int, int>, Main::key_handler> const	Main::_key_map = {
 	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(2.f); })},
 	{{76, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(-1.f); })},
 	{{81, 0}, Main::key_callback([](Main &m){ glfwSetWindowShouldClose(m.get_window(), true); })},
+	{{32, 0}, Main::key_callback([](Main &m){ m._pause = !m._pause; })},
 };
 
 int				main()
