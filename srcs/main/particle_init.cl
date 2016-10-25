@@ -6,11 +6,11 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/15 18:52:44 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:17:00 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "particule.cl.h"
+#include "particle.clh"
 
 void				_init_particle(__global p_vertex *dst_vertex,
 						__global p_info *dst_info)

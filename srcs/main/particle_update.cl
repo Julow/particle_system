@@ -6,11 +6,11 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/20 19:32:28 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:16:51 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "particule.cl.h"
+#include "particle.clh"
 
 __kernel void		update_gravity(__global p_vertex *vertex, __global p_info *info,
 						float4 center, float delta_t)

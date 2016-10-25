@@ -9,60 +9,38 @@ char const		prog_particle_init[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/15 18:52:44 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:17:00 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   particule.cl.h                                     :+:      :+:    :+:   */
+/*   particle.clh                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
+/*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/10/07 16:22:34 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/15 18:52:32 by jaguillo         ###   ########.fr       */
+/*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
+/*   Updated: 2016/10/23 20:15:17 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef PARTICULE_CL_H
-# define PARTICULE_CL_H
+#ifndef PARTICLE_CLH
+# define PARTICLE_CLH
 
-# ifndef __OPENCL_C_VERSION__
-
-#  include <glm/glm.hpp>
-
-namespace particule
-{
-
-typedef cl_float			_float;
-
-typedef glm::vec4			vec4;
-
-static_assert(std::is_same<cl_float, GLfloat>::value, "");
-
-# else
-
-typedef float4				vec4;
 typedef struct p_vertex		p_vertex;
 typedef struct p_info		p_info;
 
-# endif
-
 struct	p_vertex
 {
-	vec4		pos;
-	vec4		color;
+	float4		pos;
+	float4		color;
 };
 
 struct	p_info
 {
-	vec4		velocity;
+	float4		velocity;
 };
-
-# ifndef __OPENCL_C_VERSION__
-};
-# endif
 
 #endif
 
@@ -188,60 +166,38 @@ char const		prog_particle_update[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/20 19:32:28 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:16:51 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   particule.cl.h                                     :+:      :+:    :+:   */
+/*   particle.clh                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
+/*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/10/07 16:22:34 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/15 18:52:32 by jaguillo         ###   ########.fr       */
+/*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
+/*   Updated: 2016/10/23 20:15:17 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef PARTICULE_CL_H
-# define PARTICULE_CL_H
+#ifndef PARTICLE_CLH
+# define PARTICLE_CLH
 
-# ifndef __OPENCL_C_VERSION__
-
-#  include <glm/glm.hpp>
-
-namespace particule
-{
-
-typedef cl_float			_float;
-
-typedef glm::vec4			vec4;
-
-static_assert(std::is_same<cl_float, GLfloat>::value, "");
-
-# else
-
-typedef float4				vec4;
 typedef struct p_vertex		p_vertex;
 typedef struct p_info		p_info;
 
-# endif
-
 struct	p_vertex
 {
-	vec4		pos;
-	vec4		color;
+	float4		pos;
+	float4		color;
 };
 
 struct	p_info
 {
-	vec4		velocity;
+	float4		velocity;
 };
-
-# ifndef __OPENCL_C_VERSION__
-};
-# endif
 
 #endif
 
@@ -306,7 +262,7 @@ __kernel void		explode(__global p_vertex *vertex, __global p_info *info,
 )";
 
 char const		prog_particle_render_vert[] = R"(
-#version 410 core
+#version 150 core
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -315,12 +271,12 @@ char const		prog_particle_render_vert[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 12:55:11 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/16 17:25:41 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:37:11 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-layout (location = 0) in vec4		buff_pos;
-layout (location = 1) in vec4		buff_color;
+in vec4			buff_pos;
+in vec4			buff_color;
 
 uniform mat4	u_matrix;
 
@@ -340,7 +296,7 @@ void		main()
 )";
 
 char const		prog_particle_render_frag[] = R"(
-#version 410 core
+#version 150 core
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -349,7 +305,7 @@ char const		prog_particle_render_frag[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/20 15:52:06 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/20 19:02:30 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:31:32 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 

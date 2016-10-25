@@ -35,8 +35,9 @@ $(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
 	srcs/main/ClKernel.tpp srcs/main/FpsCounter.hpp srcs/main/FpsCounter.tpp \
 	srcs/main/GlBuffer.hpp srcs/main/GlBuffer.tpp \
 	srcs/main/GlfwWindowProxy.hpp srcs/main/f.hpp srcs/main/gen.h \
-	srcs/main/gl_utils.hpp srcs/main/opt.hpp srcs/main/particule.cl.h \
-	srcs/main/polymorphic_union.hpp srcs/main/polymorphic_union.tpp
+	srcs/main/gl_utils.hpp srcs/main/opt.hpp srcs/main/particle.cl.hpp \
+	srcs/main/particle.clh srcs/main/polymorphic_union.hpp \
+	srcs/main/polymorphic_union.tpp
 
 $(O_DIR)/srcs/main/ClContextProxy.o $(O_DIR)/srcs/main/GlfwWindowProxy.o \
 $(O_DIR)/srcs/main/gen.o $(O_DIR)/srcs/main/main.o: INCLUDE_FLAGS += \

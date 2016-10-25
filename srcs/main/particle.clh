@@ -1,0 +1,30 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   particle.clh                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
+/*   Updated: 2016/10/23 20:15:17 by juloo            ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef PARTICLE_CLH
+# define PARTICLE_CLH
+
+typedef struct p_vertex		p_vertex;
+typedef struct p_info		p_info;
+
+struct	p_vertex
+{
+	float4		pos;
+	float4		color;
+};
+
+struct	p_info
+{
+	float4		velocity;
+};
+
+#endif

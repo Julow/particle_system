@@ -1,4 +1,4 @@
-#version 410 core
+#version 150 core
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -7,12 +7,12 @@
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 12:55:11 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/16 17:25:41 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/10/23 20:37:11 by juloo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-layout (location = 0) in vec4		buff_pos;
-layout (location = 1) in vec4		buff_color;
+in vec4			buff_pos;
+in vec4			buff_color;
 
 uniform mat4	u_matrix;
 
