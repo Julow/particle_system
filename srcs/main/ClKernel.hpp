@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/06 16:56:28 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/07 14:47:43 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 17:58:40 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -14,6 +14,7 @@
 # define CLKERNEL_HPP
 
 # include "ft/cl.h"
+# include "ClProgram.hpp"
 
 # include <array>
 # include <tuple>
@@ -51,6 +52,8 @@ public:
 	class	work;
 
 	ClKernel(cl_program prog, char const *kernel_name);
+	ClKernel(ClProgram const &prog, char const *kernel_name);
+	ClKernel(ClKernel<ARGS...> &&k);
 	~ClKernel();
 
 	cl_kernel		get_kernel();
@@ -91,7 +94,6 @@ private:
 
 private:
 	ClKernel() = delete;
-	ClKernel(ClKernel &&k) = delete;
 	ClKernel(ClKernel const &src) = delete;
 	ClKernel			&operator=(ClKernel &&rhs) = delete;
 	ClKernel			&operator=(ClKernel const &rhs) = delete;

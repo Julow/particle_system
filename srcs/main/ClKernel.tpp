@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/06 16:57:00 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/07 14:33:35 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 17:58:05 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -73,6 +73,16 @@ ClKernel<ARGS...>::ClKernel(cl_program prog, char const *kernel_name)
 		throw std::runtime_error("clCreateKernel: %"_f
 				(ClContextProxy::strerror(err)));
 }
+
+template<typename ...ARGS>
+ClKernel<ARGS...>::ClKernel(ClProgram const &prog, char const *kernel_name)
+	: ClKernel<ARGS...>(prog.get_handle(), kernel_name)
+{}
+
+template<typename ...ARGS>
+ClKernel<ARGS...>::ClKernel(ClKernel<ARGS...> &&k) :
+	_kernel(k._kernel)
+{}
 
 template<typename ...ARGS>
 ClKernel<ARGS...>::~ClKernel()

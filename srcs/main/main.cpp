@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/20 19:33:12 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 17:58:21 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -29,71 +29,6 @@ __attribute__ ((noreturn))
 static void		cl_error(cl_int err, char const *str)
 {
 	throw std::runtime_error("%: %"_f(str, ClContextProxy::strerror(err)));
-}
-
-/*
-** ========================================================================== **
-** CL: Get program
-*/
-
-static uint32_t	get_log_size(cl_program program, cl_device_id device)
-{
-	size_t			size;
-
-	clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &size);
-	return (size);
-}
-
-__attribute__ ((noreturn))
-static void		program_build_error(cl_program program, cl_device_id device)
-{
-	uint32_t const	log_size = get_log_size(program, device);
-	char			log[log_size];
-
-	clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG,
-			log_size, log, NULL);
-	clReleaseProgram(program);
-	throw std::runtime_error("Failed to build program: %"_f
-					(std::string(log, log_size)));
-}
-
-cl_program		get_program(cl_context context, char const *str)
-{
-	cl_program		program;
-	cl_int			err;
-	cl_device_id	device;
-
-	if ((err = clGetContextInfo(context, CL_CONTEXT_DEVICES,
-			sizeof(device), &device, NULL)) != CL_SUCCESS)
-		cl_error(err, "clGetContextInfo");
-	program = clCreateProgramWithSource(context, 1, &str, NULL, &err);
-	if (err != CL_SUCCESS)
-		cl_error(err, "clCreateProgramWithSource");
-	err = clBuildProgram(program, 1, &device, "", NULL, NULL);
-	if (err == CL_BUILD_PROGRAM_FAILURE)
-		program_build_error(program, device);
-	else if (err != CL_SUCCESS)
-	{
-		clReleaseProgram(program);
-		cl_error(err, "clBuildProgram");
-	}
-	return (program);
-}
-
-/*
-** ========================================================================== **
-** CL: Get buffer
-*/
-
-cl_mem			get_buffer(cl_context context, cl_mem_flags flags, uint32_t size)
-{
-	cl_int			err;
-	cl_mem			buff;
-
-	buff = clCreateBuffer(context, flags, size, NULL, &err);
-	if (err != CL_SUCCESS)
-		cl_error(err, "clCreateBuffer");
-	return (buff);
 }
 
 /*
@@ -235,9 +170,10 @@ private:
 
 #include "ClBuffer.hpp"
 #include "ClGlBuffer.hpp"
+#include "ClProgram.hpp"
 #include "GlBuffer.hpp"
 #include "gen.h"
-#include "particule.cl.h"
+#include "particle.cl.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -249,13 +185,13 @@ public:
 		: _particule_count(particle_count),
 		_cl_context(context),
 
-		_init_program(get_program(_cl_context, prog_particle_init)),
-		_update_program(get_program(_cl_context, prog_particle_update)),
-		_init_square_kernel(_init_program, "init_square"),
-		_init_sphere_kernel(_init_program, "init_sphere"),
-		_init_cube_kernel(_init_program, "init_cube"),
-		_init_sphere_rand_kernel(_init_program, "init_rand_sphere"),
-		_init_cube_rand_kernel(_init_program, "init_rand_cube"),
+		_update_program(_cl_context,
+				{prog_particle_init, prog_particle_update}),
+		_init_square_kernel(_update_program, "init_square"),
+		_init_sphere_kernel(_update_program, "init_sphere"),
+		_init_cube_kernel(_update_program, "init_cube"),
+		_init_sphere_rand_kernel(_update_program, "init_rand_sphere"),
+		_init_cube_rand_kernel(_update_program, "init_rand_cube"),
 
 		_update_gravity_kernel(_update_program, "update_gravity"),
 		_update_spring_kernel(_update_program, "update_spring"),
@@ -335,8 +271,7 @@ private:
 
 	cl_context		_cl_context;
 
-	cl_program			_init_program;
-	cl_program			_update_program;
+	ClProgram			_update_program;
 	ClKernel<cl_mem, cl_mem>	_init_square_kernel;
 	ClKernel<cl_mem, cl_mem>	_init_sphere_kernel;
 	ClKernel<cl_mem, cl_mem>	_init_cube_kernel;
@@ -350,12 +285,12 @@ private:
 
 	GlUniform<glm::mat4>	_uniform_matrix;
 
-	ClGlBuffer<particule::p_vertex,
-			attrib<particule::p_vertex, particule::vec4, &particule::p_vertex::pos>,
-			attrib<particule::p_vertex, particule::vec4, &particule::p_vertex::color>
+	ClGlBuffer<particle::p_vertex,
+			attrib<particle::p_vertex, particle::float4, &particle::p_vertex::pos>,
+			attrib<particle::p_vertex, particle::float4, &particle::p_vertex::color>
 		>			_particle_vertices;
 
-	ClBuffer<particule::p_info>	_particle_infos;
+	ClBuffer<particle::p_info>	_particle_infos;
 
 	cl_float4				_center;
 
@@ -392,9 +327,9 @@ public:
 	typedef typename std::chrono::steady_clock	std_clock;
 
 	Main() :
-		GlfwWindowProxy(std::nullopt, "lol"),
+		GlfwWindowProxy(std::nullopt, "lol", {3, 2}),
 		ClContextProxy(true),
-		_particle_system(get_context(), 3000000),
+		_particle_system(get_context(), 30000),
 		_cl_fps(),
 		_gl_fps(),
 
