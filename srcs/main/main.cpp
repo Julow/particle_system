@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/26 17:58:21 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/26 18:53:32 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -25,97 +25,12 @@
 #include <stdexcept>
 #include <string>
 
-__attribute__ ((noreturn))
-static void		cl_error(cl_int err, char const *str)
-{
-	throw std::runtime_error("%: %"_f(str, ClContextProxy::strerror(err)));
-}
-
-/*
-** ========================================================================== **
-** GL: Get shader
-*/
-
-#include "ft/gl.h"
-#include <vector>
-
-struct	shader_info
-{
-	GLenum			type;
-	char const		*src;
-};
-
-static GLuint	get_shader_obj(shader_info const &info)
-{
-	GLuint			shader;
-	char			err_buffer[128];
-	GLint			status;
-
-	if ((shader = glCreateShader(info.type)) == 0)
-		throw std::runtime_error("Invalid shader type %"_f(info.type));
-	glShaderSource(shader, 1, &info.src, NULL);
-	glCompileShader(shader);
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-	if (status != GL_TRUE)
-	{
-		glGetShaderInfoLog(shader, sizeof(err_buffer), NULL, err_buffer);
-		glDeleteShader(shader);
-		throw std::runtime_error("Shader compilation error: %"_f(err_buffer));
-	}
-	return (shader);
-}
-
-static GLuint	link_shaders(GLuint *shaders, unsigned count)
-{
-	GLuint			program;
-	GLint			status;
-	char			err_buffer[128];
-
-	if ((program = glCreateProgram()) == 0)
-		throw std::runtime_error("Failed to create shader program object");
-	for (unsigned i = 0; i < count; i++)
-		glAttachShader(program, shaders[i]);
-	glLinkProgram(program);
-	glGetProgramiv(program, GL_LINK_STATUS, &status);
-	if (status != GL_TRUE)
-	{
-		glGetProgramInfoLog(program, sizeof(err_buffer), NULL, err_buffer);
-		glDeleteProgram(program);
-		throw std::runtime_error("Failed to link program: %"_f(err_buffer));
-	}
-	for (unsigned i = 0; i < count; i++)
-	{
-		glDetachShader(program, shaders[i]);
-		glDeleteShader(shaders[i]);
-	}
-	return (program);
-}
-
-GLuint			get_shaders(std::vector<shader_info> const &shader_infos)
-{
-	GLuint			shaders[shader_infos.size()];
-	unsigned		i;
-
-	i = 0;
-	try
-	{
-		for (; i < shader_infos.size(); i++)
-			shaders[i] = get_shader_obj(shader_infos[i]);
-		return (link_shaders(shaders, i));
-	}
-	catch (std::runtime_error const &e)
-	{
-		while (i > 0)
-			glDeleteShader(shaders[--i]);
-		throw;
-	}
-}
-
 /*
 ** ========================================================================== **
 ** Get uniform
 */
 
+#include "GlProgram.hpp"
 #include "gl_utils.hpp"
 
 /*
@@ -131,6 +46,9 @@ public:
 		if ((_loc = glGetUniformLocation(program, name)) < 0)
 			throw std::runtime_error("Unknown uniform %"_f(name));
 	}
+	GlUniform(GlProgram const &program, char const *name) :
+		GlUniform(program.get_handle(), name)
+	{}
 
 	virtual ~GlUniform()
 	{}
@@ -197,10 +115,10 @@ public:
 		_update_spring_kernel(_update_program, "update_spring"),
 		_explode_kernel(_update_program, "explode"),
 
-		_render_program(get_shaders({
+		_render_program({
 				{GL_VERTEX_SHADER, prog_particle_render_vert},
 				{GL_FRAGMENT_SHADER, prog_particle_render_frag},
-			})),
+			}),
 		_uniform_matrix(_render_program, "u_matrix"),
 
 		_particle_vertices(_cl_context, _particule_count, nullptr),
@@ -260,10 +178,9 @@ public:
 
 	void			render()
 	{
-		glUseProgram(_render_program);
-		glBindVertexArray(_particle_vertices.get_gl_handle());
+		_render_program.use();
+		_particle_vertices.gl_bind();
 		glDrawArrays(GL_POINTS, 0, _particule_count);
-		glBindVertexArray(0);
 	}
 
 private:
@@ -271,7 +188,7 @@ private:
 
 	cl_context		_cl_context;
 
-	ClProgram			_update_program;
+	ClProgram		_update_program;
 	ClKernel<cl_mem, cl_mem>	_init_square_kernel;
 	ClKernel<cl_mem, cl_mem>	_init_sphere_kernel;
 	ClKernel<cl_mem, cl_mem>	_init_cube_kernel;
@@ -281,8 +198,7 @@ private:
 	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_spring_kernel;
 	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_explode_kernel;
 
-	GLuint			_render_program;
-
+	GlProgram		_render_program;
 	GlUniform<glm::mat4>	_uniform_matrix;
 
 	ClGlBuffer<particle::p_vertex,

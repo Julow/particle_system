@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 19:54:29 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 18:50:38 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -38,6 +38,12 @@ template<typename T, typename ...ATT>
 cl_mem			ClGlBuffer<T, ATT...>::get_cl_handle()
 {
 	return (ClBuffer<T>::get_handle());
+}
+
+template<typename T, typename ...ATT>
+void			ClGlBuffer<T, ATT...>::gl_bind()
+{
+	return (GlBuffer<T, ATT...>::bind());
 }
 
 template<typename T, typename ...ATT>

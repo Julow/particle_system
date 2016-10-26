@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:48:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/09 19:30:33 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 18:46:59 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -39,6 +39,7 @@ public:
 	virtual ~GlBuffer();
 
 	GLuint			get_handle();
+	void			bind();
 
 private:
 	GLuint			_vao;

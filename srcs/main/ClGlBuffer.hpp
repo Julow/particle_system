@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 19:55:53 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 18:47:03 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -31,6 +31,8 @@ public:
 
 	GLuint			get_gl_handle();
 	cl_mem			get_cl_handle();
+
+	void			gl_bind();
 
 private:
 	cl_mem			_handle;

@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:49:46 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/09 18:44:36 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 18:50:21 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -41,6 +41,12 @@ template<typename T, typename ...ATT>
 GLuint			GlBuffer<T, ATT...>::get_handle()
 {
 	return (_vao);
+}
+
+template<typename T, typename ...ATT>
+void			GlBuffer<T, ATT...>::bind()
+{
+	glBindVertexArray(_vao);
 }
 
 template<typename T, typename ...ATT>
