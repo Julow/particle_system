@@ -6,14 +6,16 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/06 16:57:00 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/26 17:58:05 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/26 19:21:24 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef CLKERNEL_TPP
 # define CLKERNEL_TPP
 
+# include "ClContextProxy.hpp" // TODO: remove
 # include "f.hpp"
+
 # include <stdexcept>
 
 template<typename ...ARGS>

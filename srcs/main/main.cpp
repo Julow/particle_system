@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/26 18:53:32 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/26 19:25:00 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -15,219 +15,23 @@
 
 #include "ClContextProxy.hpp"
 #include "ClKernel.hpp"
+#include "FpsCounter.hpp"
+#include "GlProgram.hpp"
+#include "GlUniform.hpp"
 #include "GlfwWindowProxy.hpp"
+#include "ParticleSystem.hpp"
 #include "f.hpp"
+#include "polymorphic_union.hpp"
 
 #include <ctime>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <stdexcept>
 #include <string>
 
-/*
-** ========================================================================== **
-** Get uniform
-*/
-
-#include "GlProgram.hpp"
-#include "gl_utils.hpp"
-
-/*
-** W: Change the current program (glUseProgram)
-*/
-template<typename T, size_t SIZE = 1>
-class	GlUniform
-{
-public:
-	GlUniform(GLuint program, char const *name)
-		: _program(program)
-	{
-		if ((_loc = glGetUniformLocation(program, name)) < 0)
-			throw std::runtime_error("Unknown uniform %"_f(name));
-	}
-	GlUniform(GlProgram const &program, char const *name) :
-		GlUniform(program.get_handle(), name)
-	{}
-
-	virtual ~GlUniform()
-	{}
-
-	GLuint			get_location() { return (_loc); }
-
-	template<bool DUMMY = true,
-		typename = std::enable_if_t<SIZE == 1 && DUMMY>>
-	void			operator=(T const &v)
-	{
-		glUseProgram(_program);
-		gl_utils::gl_type<T>::uniform_write(_loc, 1, &v);
-	}
-
-	void			operator=(T const *v)
-	{
-		glUseProgram(_program);
-		gl_utils::gl_type<T>::uniform_write(_loc, SIZE, v);
-	}
-
-private:
-	GLuint			_loc;
-	GLuint			_program;
-
-private:
-	GlUniform() = delete;
-	GlUniform(GlUniform &&src) = delete;
-	GlUniform(GlUniform const &src) = delete;
-	GlUniform		&operator=(GlUniform &&rhs) = delete;
-	GlUniform		&operator=(GlUniform const &rhs) = delete;
-};
-
-/*
-** ========================================================================== **
-** ParticleSystem
-*/
-
-#include "ClBuffer.hpp"
-#include "ClGlBuffer.hpp"
-#include "ClProgram.hpp"
-#include "GlBuffer.hpp"
-#include "gen.h"
-#include "particle.cl.hpp"
-
-#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
-class	ParticleSystem
-{
-public:
-	ParticleSystem(cl_context context, unsigned particle_count)
-		: _particule_count(particle_count),
-		_cl_context(context),
-
-		_update_program(_cl_context,
-				{prog_particle_init, prog_particle_update}),
-		_init_square_kernel(_update_program, "init_square"),
-		_init_sphere_kernel(_update_program, "init_sphere"),
-		_init_cube_kernel(_update_program, "init_cube"),
-		_init_sphere_rand_kernel(_update_program, "init_rand_sphere"),
-		_init_cube_rand_kernel(_update_program, "init_rand_cube"),
-
-		_update_gravity_kernel(_update_program, "update_gravity"),
-		_update_spring_kernel(_update_program, "update_spring"),
-		_explode_kernel(_update_program, "explode"),
-
-		_render_program({
-				{GL_VERTEX_SHADER, prog_particle_render_vert},
-				{GL_FRAGMENT_SHADER, prog_particle_render_frag},
-			}),
-		_uniform_matrix(_render_program, "u_matrix"),
-
-		_particle_vertices(_cl_context, _particule_count, nullptr),
-		_particle_infos(_cl_context, _particule_count),
-
-		_center{{0.f, 0.f, 0.f, 0.f}}
-
-	{}
-
-	virtual ~ParticleSystem() {}
-
-	void			init(cl_command_queue queue)
-	{
-		auto	p_vertices = cl_acquire(queue, _particle_vertices);
-
-		// _init_square_kernel.make_work<1>(_particule_count)
-		_init_sphere_kernel.make_work<1>(_particule_count)
-		// _init_cube_kernel.make_work<1>(_particule_count)
-				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
-		// _init_sphere_rand_kernel.make_work<1>(_particule_count)
-		// _init_cube_rand_kernel.make_work<1>(_particule_count)
-				// (queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
-	}
-
-	void			set_center(glm::vec3 const &center)
-	{
-		_center = {{center.x, center.y, center.z, 0.f}};
-	}
-
-	void			set_matrix(glm::mat4 const &m)
-	{
-		_uniform_matrix = m;
-	}
-
-	void			explode(float force)
-	{
-		_explode = force;
-	}
-
-	void			update(cl_command_queue queue, float delta_t)
-	{
-		auto	p_vertices = cl_acquire(queue, _particle_vertices);
-
-		if (_explode)
-		{
-			_explode_kernel.make_work<1>(_particule_count)
-					(queue, std::get<0>(p_vertices).get_handle(),
-						_particle_infos.get_handle(), _center, *_explode);
-			_explode = std::nullopt;
-		}
-		_update_spring_kernel
-		// _update_gravity_kernel
-				.make_work<1>(_particule_count)
-				(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(),
-						_center, delta_t);
-	}
-
-	void			render()
-	{
-		_render_program.use();
-		_particle_vertices.gl_bind();
-		glDrawArrays(GL_POINTS, 0, _particule_count);
-	}
-
-private:
-	unsigned		_particule_count;
-
-	cl_context		_cl_context;
-
-	ClProgram		_update_program;
-	ClKernel<cl_mem, cl_mem>	_init_square_kernel;
-	ClKernel<cl_mem, cl_mem>	_init_sphere_kernel;
-	ClKernel<cl_mem, cl_mem>	_init_cube_kernel;
-	ClKernel<cl_mem, cl_mem, cl_uint>	_init_sphere_rand_kernel;
-	ClKernel<cl_mem, cl_mem, cl_uint>	_init_cube_rand_kernel;
-	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_gravity_kernel;
-	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_spring_kernel;
-	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_explode_kernel;
-
-	GlProgram		_render_program;
-	GlUniform<glm::mat4>	_uniform_matrix;
-
-	ClGlBuffer<particle::p_vertex,
-			attrib<particle::p_vertex, particle::float4, &particle::p_vertex::pos>,
-			attrib<particle::p_vertex, particle::float4, &particle::p_vertex::color>
-		>			_particle_vertices;
-
-	ClBuffer<particle::p_info>	_particle_infos;
-
-	cl_float4				_center;
-
-	std::optional<float>	_explode;
-
-private:
-	ParticleSystem() = delete;
-	ParticleSystem(ParticleSystem &&src) = delete;
-	ParticleSystem(ParticleSystem const &src) = delete;
-	ParticleSystem	&operator=(ParticleSystem &&rhs) = delete;
-	ParticleSystem	&operator=(ParticleSystem const &rhs) = delete;
-};
-
-/*
-** ========================================================================== **
-*/
-
-#include "FpsCounter.hpp"
-#include "polymorphic_union.hpp"
-
-#include <iomanip>
 
 static float	get_window_ratio(GlfwWindowProxy const &w)
 {
@@ -505,7 +309,7 @@ std::map<std::pair<int, int>, Main::key_handler> const	Main::_key_map = {
 	{{263, 0}, Main::key_hold(Main::HOLD_KEY_LEFT)},
 	{{83, 0}, Main::key_hold(Main::HOLD_KEY_FRONT)},
 	{{87, 0}, Main::key_hold(Main::HOLD_KEY_BACK)},
-	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(2.f); })},
+	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(10.f); })},
 	{{76, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(-1.f); })},
 	{{81, 0}, Main::key_callback([](Main &m){ glfwSetWindowShouldClose(m.get_window(), true); })},
 	{{32, 0}, Main::key_callback([](Main &m){ m._pause = !m._pause; })},

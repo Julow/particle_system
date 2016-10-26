@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/08 17:53:08 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/26 18:47:03 by juloo            ###   ########.fr       //
+//   Updated: 2016/10/26 19:23:43 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -15,6 +15,8 @@
 
 # include "ft/cl.h"
 # include "GlBuffer.hpp"
+
+# include <utility>
 
 /*
 ** Shared buffer between OpenGL and OpenCL

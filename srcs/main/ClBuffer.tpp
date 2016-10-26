@@ -6,12 +6,18 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/13 12:05:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/13 13:48:50 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/10/26 19:27:15 by juloo            ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
 #ifndef CLBUFFER_TPP
 # define CLBUFFER_TPP
+
+# include "ClContextProxy.hpp" // TODO: remove
+# include "f.hpp"
+
+# include <stdexcept>
+# include <tuple>
 
 template<typename T>
 ClBuffer<T>::ClBuffer(cl_context context, size_t size, bool read_only)
