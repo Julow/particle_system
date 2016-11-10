@@ -6,7 +6,7 @@
 //   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/26 19:13:58 by juloo             #+#    #+#             //
-//   Updated: 2016/11/10 13:16:33 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/11/10 14:59:11 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -29,8 +29,7 @@ ParticleSystem::ParticleSystem(cl_context context, unsigned particle_count) :
 
 	_init_springs_kernel(_update_program, "init_springs"),
 
-	_update_gravity_kernel(_update_program, "update_gravity"),
-	_update_spring_kernel(_update_program, "update_spring"),
+	_update_kernel(_update_program, "update"),
 	_explode_kernel(_update_program, "explode"),
 
 	_render_program({
@@ -89,9 +88,7 @@ void			ParticleSystem::update(cl_command_queue queue, float delta_t)
 					_particle_infos.get_handle(), _center, *_explode);
 		_explode = std::nullopt;
 	}
-	_update_spring_kernel
-	// _update_gravity_kernel
-			.make_work<1>(_particule_count)
+	_update_kernel.make_work<1>(_particule_count)
 			(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(),
 					_center, delta_t);
 }

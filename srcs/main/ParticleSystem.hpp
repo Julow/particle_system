@@ -6,7 +6,7 @@
 //   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/26 19:12:28 by juloo             #+#    #+#             //
-//   Updated: 2016/11/10 12:57:30 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/11/10 13:58:52 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -53,8 +53,7 @@ private:
 
 	ClKernel<cl_mem, cl_mem, cl_uint>	_init_springs_kernel;
 
-	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_gravity_kernel;
-	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_spring_kernel;
+	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_update_kernel;
 	ClKernel<cl_mem, cl_mem, cl_float4, cl_float>	_explode_kernel;
 
 	GlProgram		_render_program;

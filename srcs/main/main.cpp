@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/11/10 13:13:07 by jaguillo         ###   ########.fr       //
+//   Updated: 2016/11/10 13:35:19 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -308,7 +308,7 @@ std::map<std::pair<int, int>, Main::key_handler> const	Main::_key_map = {
 	{{263, 0}, Main::key_hold(Main::HOLD_KEY_LEFT)},
 	{{83, 0}, Main::key_hold(Main::HOLD_KEY_FRONT)},
 	{{87, 0}, Main::key_hold(Main::HOLD_KEY_BACK)},
-	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(2.f); })},
+	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(20.f); })},
 	{{76, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(-1.f); })},
 	{{81, 0}, Main::key_callback([](Main &m){ glfwSetWindowShouldClose(m.get_window(), true); })},
 	{{32, 0}, Main::key_callback([](Main &m){ m._pause = !m._pause; })},

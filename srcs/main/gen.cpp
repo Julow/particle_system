@@ -9,7 +9,7 @@ char const		prog_particle_init[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/11/10 13:27:46 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/11/10 15:01:08 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ char const		prog_particle_init[] = R"(
 /*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
-/*   Updated: 2016/11/10 13:23:11 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/11/10 13:58:08 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,13 +46,8 @@ struct	p_info
 };
 
 # define P_MASS			1.f
-# define P_DRAG			0.47f
 
 # define P_RADIUS		5.f
-
-# define P_AREA			((float)M_PI * P_RADIUS * P_RADIUS)
-
-# define CENTER_MASS	3.f
 
 #endif
 
@@ -198,7 +193,7 @@ char const		prog_particle_update[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/11/10 13:30:37 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/11/10 14:57:45 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -210,7 +205,7 @@ char const		prog_particle_update[] = R"(
 /*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
-/*   Updated: 2016/11/10 13:23:11 by jaguillo         ###   ########.fr       */
+/*   Updated: 2016/11/10 13:58:08 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -235,60 +230,50 @@ struct	p_info
 };
 
 # define P_MASS			1.f
-# define P_DRAG			0.47f
 
 # define P_RADIUS		5.f
-
-# define P_AREA			((float)M_PI * P_RADIUS * P_RADIUS)
-
-# define CENTER_MASS	3.f
 
 #endif
 
 #define G				10.f
+#define CENTER_MASS		3.f
 
-__kernel void		update_gravity(__global p_vertex *vertex, __global p_info *info,
-						float4 center, float delta_t)
+static float4		f_gravity(__global p_vertex const *vertex,
+						__global p_info const *info, float4 center)
 {
-	uint const			id = get_global_id(0);
+	float4 const		r = center - vertex->pos;
 
-	float4 const		vel_0 = info[id].velocity;
-	float4 const		pos_0 = vertex[id].pos;
+	return ((G * P_MASS * CENTER_MASS / (dot(r, r) + 0.5f)) * r);
+}
 
-	float const			mid_delta_t = delta_t / 2.f;
-	float4 const		pos_mid = pos_0 + vel_0 * mid_delta_t;
-
-	float4 const		r_mid = center - pos_mid;
-	float const			r_mid_sq = dot(r_mid, r_mid);
-	float4 const		acc_mid = G * CENTER_MASS / (r_mid_sq + 0.5f) * r_mid;
-
-	float4 const		vel_1 = vel_0 + acc_mid * delta_t;
-	float4				pos_1 = pos_0 + (vel_0 + vel_1) * mid_delta_t;
-
-	pos_1.w = 1.f;
-	vertex[id].pos = pos_1;
-	info[id].velocity = vel_1;
+static float4		f_spring(__global p_vertex const *vertex,
+						__global p_info const *info, float4 center)
+{
+	return ((vertex->pos - (info->spring_pos + center)) * -info->spring_k);
 }
 
 // Stokes' law
-#define ATM_DENSITY			0.06f
-#define ATM_RESISTANCE(V)	(6.f * (float)M_PI * ATM_DENSITY * P_RADIUS * (V))
+static float4		f_drag(__global p_vertex const *vertex,
+						__global p_info const *info)
+{
+	float const			viscosity = 0.06f;
 
-__kernel void		update_spring(__global p_vertex *vertex,
+	return ((6.f * (float)M_PI * viscosity * P_RADIUS) * info->velocity);
+}
+
+__kernel void		update(__global p_vertex *vertex,
 						__global p_info *info, float4 center, float delta_t)
 {
 	uint const			id = get_global_id(0);
 
-	float4 const		vel_0 = info[id].velocity;
-	float4 const		pos_0 = vertex[id].pos;
+	float4 const		F = 0.f
+								+ f_spring(vertex + id, info + id, center)
+								+ f_gravity(vertex + id, info + id, center)
+								- f_drag(vertex + id, info + id)
+							;
 
-	float4 const		r = pos_0 - (info[id].spring_pos + center);
-	float4 const		acc_spring = r * (-info[id].spring_k / P_MASS);
-
-	float4 const		acc = acc_spring - ATM_RESISTANCE(vel_0);
-
-	float4 const		vel_1 = vel_0 + acc * delta_t;
-	float4 const		pos_1 = pos_0 + vel_1 * delta_t;
+	float4 const		vel_1 = info[id].velocity + (F / P_MASS) * delta_t;
+	float4 const		pos_1 = vertex[id].pos + vel_1 * delta_t;
 
 	vertex[id].pos = (float4){pos_1.x, pos_1.y, pos_1.z, 1.f};
 	info[id].velocity = vel_1;
