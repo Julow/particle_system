@@ -6,7 +6,7 @@
 //   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/26 19:13:58 by juloo             #+#    #+#             //
-//   Updated: 2016/10/26 19:24:58 by juloo            ###   ########.fr       //
+//   Updated: 2016/11/10 13:16:33 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -26,6 +26,8 @@ ParticleSystem::ParticleSystem(cl_context context, unsigned particle_count) :
 	_init_cube_kernel(_update_program, "init_cube"),
 	_init_sphere_rand_kernel(_update_program, "init_rand_sphere"),
 	_init_cube_rand_kernel(_update_program, "init_rand_cube"),
+
+	_init_springs_kernel(_update_program, "init_springs"),
 
 	_update_gravity_kernel(_update_program, "update_gravity"),
 	_update_spring_kernel(_update_program, "update_spring"),
@@ -52,10 +54,12 @@ void			ParticleSystem::init(cl_command_queue queue)
 
 	// _init_square_kernel.make_work<1>(_particule_count)
 	// _init_sphere_kernel.make_work<1>(_particule_count)
-	// _init_cube_kernel.make_work<1>(_particule_count)
-			// (queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
+	_init_cube_kernel.make_work<1>(_particule_count)
+			(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle());
 	// _init_sphere_rand_kernel.make_work<1>(_particule_count)
-	_init_cube_rand_kernel.make_work<1>(_particule_count)
+	// _init_cube_rand_kernel.make_work<1>(_particule_count)
+			// (queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
+	_init_springs_kernel.make_work<1>(_particule_count)
 			(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(), std::clock());
 }
 
@@ -85,8 +89,8 @@ void			ParticleSystem::update(cl_command_queue queue, float delta_t)
 					_particle_infos.get_handle(), _center, *_explode);
 		_explode = std::nullopt;
 	}
-	// _update_spring_kernel
-	_update_gravity_kernel
+	_update_spring_kernel
+	// _update_gravity_kernel
 			.make_work<1>(_particule_count)
 			(queue, std::get<0>(p_vertices).get_handle(), _particle_infos.get_handle(),
 					_center, delta_t);

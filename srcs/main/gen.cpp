@@ -9,7 +9,7 @@ char const		prog_particle_init[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/14 14:59:47 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/23 20:17:00 by juloo            ###   ########.fr       */
+/*   Updated: 2016/11/10 13:27:46 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ char const		prog_particle_init[] = R"(
 /*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
-/*   Updated: 2016/10/23 20:15:17 by juloo            ###   ########.fr       */
+/*   Updated: 2016/11/10 13:23:11 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,11 +40,23 @@ struct	p_vertex
 struct	p_info
 {
 	float4		velocity;
+	float4		spring_pos;
+	float		spring_k;
+	float		pad[3];
 };
+
+# define P_MASS			1.f
+# define P_DRAG			0.47f
+
+# define P_RADIUS		5.f
+
+# define P_AREA			((float)M_PI * P_RADIUS * P_RADIUS)
+
+# define CENTER_MASS	3.f
 
 #endif
 
-void				_init_particle(__global p_vertex *dst_vertex,
+static void			_init_particle(__global p_vertex *dst_vertex,
 						__global p_info *dst_info)
 {
 	float const		w = (get_global_id(0) + 1) / (float)get_global_size(0);
@@ -56,6 +68,33 @@ void				_init_particle(__global p_vertex *dst_vertex,
 	// dst_info->mass = 1.f;
 }
 
+static float		frand(uint *seed)
+{
+	uint const			salt = 209863451;
+	uint const			t = *seed ^ (*seed << 11);
+
+	*seed = salt ^ (salt >> 19) ^ (t ^ (t >> 8));
+	return (*seed / (float)0xFFFFFFFF);
+}
+
+static uint			init_rand(uint param)
+{
+	uint const			id = get_global_id(0);
+
+	return (param + (id | (id << 16)) * id);
+}
+
+__kernel void		init_springs(__global p_vertex *vertex,
+						__global p_info *info, uint initial_rand)
+{
+	uint			seed;
+	uint const		id = get_global_id(0);
+
+	seed = init_rand(initial_rand);
+	info[id].spring_pos = vertex[id].pos;
+	info[id].spring_k = mix(20.f, 80.f, frand(&seed));
+}
+
 __kernel void		init_square(__global p_vertex *vertex,
 						__global p_info *info)
 {
@@ -64,8 +103,8 @@ __kernel void		init_square(__global p_vertex *vertex,
 
 	_init_particle(vertex + id, info + id);
 	vertex[id].pos = (float4){
-		(id % per_line) / (float)per_line * 2.f - 1.f,
-		(id / per_line) / (float)per_line * 2.f - 1.f,
+		(id % per_line) / (float)per_line - 0.5f,
+		(id / per_line) / (float)per_line - 0.5f,
 		0.f,
 		1.f
 	};
@@ -87,6 +126,8 @@ __kernel void		init_sphere(__global p_vertex *vertex,
 	vertex[id].pos = normalize(vertex[id].pos);
 }
 
+#define CUBE_RADIUS		0.5f
+
 __kernel void		init_cube(__global p_vertex *vertex,
 						__global p_info *info)
 {
@@ -96,24 +137,15 @@ __kernel void		init_cube(__global p_vertex *vertex,
 	float3			tmp;
 
 	_init_particle(vertex + id, info + id);
-	tmp.x = (id % per_line) / (float)per_line * 2.f - 1.f;
-	tmp.y = (id / per_line) / (float)per_line * 2.f - 1.f;
-	tmp.z = ((id % 6) >= 3) ? -1.f : 1.f;
+	tmp.x = (id % per_line) / (float)per_line * (CUBE_RADIUS * 2.f) - CUBE_RADIUS;
+	tmp.y = (id / per_line) / (float)per_line * (CUBE_RADIUS * 2.f) - CUBE_RADIUS;
+	tmp.z = ((id % 6) >= 3) ? -CUBE_RADIUS : CUBE_RADIUS;
 	if (side == 0)
 		vertex[id].pos = (float4){tmp.x, tmp.y, tmp.z, 1.f};
 	else if (side == 1)
 		vertex[id].pos = (float4){tmp.x, tmp.z, tmp.y, 1.f};
 	else
 		vertex[id].pos = (float4){tmp.z, tmp.y, tmp.x, 1.f};
-}
-
-float				frand(uint *seed)
-{
-	uint const			salt = 209863451;
-	uint const			t = *seed ^ (*seed << 11);
-
-	*seed = salt ^ (salt >> 19) ^ (t ^ (t >> 8));
-	return (*seed / (float)0xFFFFFFFF);
 }
 
 __kernel void		init_rand_sphere(__global p_vertex *vertex,
@@ -124,7 +156,7 @@ __kernel void		init_rand_sphere(__global p_vertex *vertex,
 	float2			tmp;
 	float			len;
 
-	seed = initial_rand + (id | (id << 16)) * id;
+	seed = init_rand(initial_rand);
 	_init_particle(vertex + id, info + id);
 	tmp = (float2){
 		(frand(&seed) * 2.f) * M_PI,
@@ -146,7 +178,7 @@ __kernel void		init_rand_cube(__global p_vertex *vertex,
 	uint			seed;
 	uint const		id = get_global_id(0);
 
-	seed = initial_rand + (id | (id << 16)) * id;
+	seed = init_rand(initial_rand);
 	_init_particle(vertex + id, info + id);
 	vertex[id].pos = (float4){
 		frand(&seed) * 2.f - 1.f,
@@ -166,7 +198,7 @@ char const		prog_particle_update[] = R"(
 /*   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/10 16:57:32 by jaguillo          #+#    #+#             */
-/*   Updated: 2016/10/23 20:16:51 by juloo            ###   ########.fr       */
+/*   Updated: 2016/11/10 13:30:37 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,7 +210,7 @@ char const		prog_particle_update[] = R"(
 /*   By: juloo <juloo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/10/23 20:14:44 by juloo             #+#    #+#             */
-/*   Updated: 2016/10/23 20:15:17 by juloo            ###   ########.fr       */
+/*   Updated: 2016/11/10 13:23:11 by jaguillo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,9 +229,23 @@ struct	p_vertex
 struct	p_info
 {
 	float4		velocity;
+	float4		spring_pos;
+	float		spring_k;
+	float		pad[3];
 };
 
+# define P_MASS			1.f
+# define P_DRAG			0.47f
+
+# define P_RADIUS		5.f
+
+# define P_AREA			((float)M_PI * P_RADIUS * P_RADIUS)
+
+# define CENTER_MASS	3.f
+
 #endif
+
+#define G				10.f
 
 __kernel void		update_gravity(__global p_vertex *vertex, __global p_info *info,
 						float4 center, float delta_t)
@@ -209,15 +255,12 @@ __kernel void		update_gravity(__global p_vertex *vertex, __global p_info *info,
 	float4 const		vel_0 = info[id].velocity;
 	float4 const		pos_0 = vertex[id].pos;
 
-	float const			G = 10.f;
-	float const			center_mass = 3.f;
-
 	float const			mid_delta_t = delta_t / 2.f;
 	float4 const		pos_mid = pos_0 + vel_0 * mid_delta_t;
 
 	float4 const		r_mid = center - pos_mid;
 	float const			r_mid_sq = dot(r_mid, r_mid);
-	float4 const		acc_mid = G * center_mass / (r_mid_sq + 0.5f) * r_mid;
+	float4 const		acc_mid = G * CENTER_MASS / (r_mid_sq + 0.5f) * r_mid;
 
 	float4 const		vel_1 = vel_0 + acc_mid * delta_t;
 	float4				pos_1 = pos_0 + (vel_0 + vel_1) * mid_delta_t;
@@ -227,6 +270,10 @@ __kernel void		update_gravity(__global p_vertex *vertex, __global p_info *info,
 	info[id].velocity = vel_1;
 }
 
+// Stokes' law
+#define ATM_DENSITY			0.06f
+#define ATM_RESISTANCE(V)	(6.f * (float)M_PI * ATM_DENSITY * P_RADIUS * (V))
+
 __kernel void		update_spring(__global p_vertex *vertex,
 						__global p_info *info, float4 center, float delta_t)
 {
@@ -235,13 +282,10 @@ __kernel void		update_spring(__global p_vertex *vertex,
 	float4 const		vel_0 = info[id].velocity;
 	float4 const		pos_0 = vertex[id].pos;
 
-	float const			K = 5.f;
-	float const			spring_len = 0.f;
-	float const			mass = 1.f;
+	float4 const		r = pos_0 - (info[id].spring_pos + center);
+	float4 const		acc_spring = r * (-info[id].spring_k / P_MASS);
 
-	float4 const		r = pos_0 - center;
-	float const			r_len = length(r);
-	float4 const		acc = r * (-K / mass * (r_len - spring_len) / r_len);
+	float4 const		acc = acc_spring - ATM_RESISTANCE(vel_0);
 
 	float4 const		vel_1 = vel_0 + acc * delta_t;
 	float4 const		pos_1 = pos_0 + vel_1 * delta_t;

@@ -6,7 +6,7 @@
 //   By: jaguillo <jaguillo@student.42.fr>          +#+  +:+       +#+        //
 //                                                +#+#+#+#+#+   +#+           //
 //   Created: 2016/10/04 13:50:05 by jaguillo          #+#    #+#             //
-//   Updated: 2016/10/26 19:25:00 by juloo            ###   ########.fr       //
+//   Updated: 2016/11/10 13:13:07 by jaguillo         ###   ########.fr       //
 //                                                                            //
 // ************************************************************************** //
 
@@ -49,7 +49,7 @@ public:
 	Main() :
 		GlfwWindowProxy(std::nullopt, "lol", {3, 2}),
 		ClContextProxy(true),
-		_particle_system(get_context(), 30000),
+		_particle_system(get_context(), 300000),
 		_cl_fps(),
 		_gl_fps(),
 
@@ -57,7 +57,7 @@ public:
 
 		_pause(false),
 
-		_m_proj(glm::perspective(90.f, get_window_ratio(*this), 0.01f, 1000.f)),
+		_m_proj(glm::perspective(1.2f, get_window_ratio(*this), 0.01f, 1000.f)),
 
 		_look_at(0.f, M_PI/2.f),
 		_look_at_vec(0.f, 0.f, -1.f),
@@ -188,7 +188,6 @@ private:
 			_look_at.x = std::max(_look_at.x - delta_t, (float)-M_PI/2.f);
 		if (_hold_keys & HOLD_KEY_LEFT)
 			_look_at.y = _look_at.y + delta_t;
-		ft::f(std::cout, "X % Y %\n", _look_at.x, _look_at.y);
 		return (true);
 	}
 
@@ -309,7 +308,7 @@ std::map<std::pair<int, int>, Main::key_handler> const	Main::_key_map = {
 	{{263, 0}, Main::key_hold(Main::HOLD_KEY_LEFT)},
 	{{83, 0}, Main::key_hold(Main::HOLD_KEY_FRONT)},
 	{{87, 0}, Main::key_hold(Main::HOLD_KEY_BACK)},
-	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(10.f); })},
+	{{75, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(2.f); })},
 	{{76, 0}, Main::key_callback([](Main &m){ m._particle_system.explode(-1.f); })},
 	{{81, 0}, Main::key_callback([](Main &m){ glfwSetWindowShouldClose(m.get_window(), true); })},
 	{{32, 0}, Main::key_callback([](Main &m){ m._pause = !m._pause; })},

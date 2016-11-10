@@ -35,20 +35,24 @@ $(O_DIR)/srcs/main/GlfwWindowProxy.o: srcs/main/GlfwWindowProxy.cpp \
 	libft/ft_gl/gl.h srcs/main/GlfwWindowProxy.hpp srcs/main/opt.hpp
 $(O_DIR)/srcs/main/ParticleSystem.o: srcs/main/ParticleSystem.cpp \
 	libft/ft_gl/gl.h srcs/ft_cl/cl.h srcs/main/ClBuffer.hpp \
-	srcs/main/ClBuffer.tpp srcs/main/ClProgram.hpp srcs/main/GlBuffer.hpp \
-	srcs/main/GlBuffer.tpp srcs/main/GlProgram.hpp \
-	srcs/main/ParticleSystem.hpp srcs/main/gen.h srcs/main/gl_utils.hpp \
-	srcs/main/particle.cl.hpp srcs/main/particle.clh
+	srcs/main/ClBuffer.tpp srcs/main/ClContextProxy.hpp \
+	srcs/main/ClGlBuffer.hpp srcs/main/ClGlBuffer.tpp srcs/main/ClKernel.hpp \
+	srcs/main/ClKernel.tpp srcs/main/ClProgram.hpp srcs/main/GlBuffer.hpp \
+	srcs/main/GlBuffer.tpp srcs/main/GlProgram.hpp srcs/main/GlUniform.hpp \
+	srcs/main/GlUniform.tpp srcs/main/ParticleSystem.hpp srcs/main/f.hpp \
+	srcs/main/gen.h srcs/main/gl_utils.hpp srcs/main/particle.cl.hpp \
+	srcs/main/particle.clh
 $(O_DIR)/srcs/main/gen.o: srcs/main/gen.cpp srcs/main/gen.h
 $(O_DIR)/srcs/main/main.o: srcs/main/main.cpp libft/ft_gl/gl.h srcs/ft_cl/cl.h \
 	srcs/main/ClBuffer.hpp srcs/main/ClBuffer.tpp srcs/main/ClContextProxy.hpp \
-	srcs/main/ClKernel.hpp srcs/main/ClKernel.tpp srcs/main/ClProgram.hpp \
-	srcs/main/FpsCounter.hpp srcs/main/FpsCounter.tpp srcs/main/GlBuffer.hpp \
-	srcs/main/GlBuffer.tpp srcs/main/GlProgram.hpp srcs/main/GlUniform.hpp \
-	srcs/main/GlUniform.tpp srcs/main/GlfwWindowProxy.hpp \
-	srcs/main/ParticleSystem.hpp srcs/main/f.hpp srcs/main/gl_utils.hpp \
-	srcs/main/opt.hpp srcs/main/particle.cl.hpp srcs/main/particle.clh \
-	srcs/main/polymorphic_union.hpp srcs/main/polymorphic_union.tpp
+	srcs/main/ClGlBuffer.hpp srcs/main/ClGlBuffer.tpp srcs/main/ClKernel.hpp \
+	srcs/main/ClKernel.tpp srcs/main/ClProgram.hpp srcs/main/FpsCounter.hpp \
+	srcs/main/FpsCounter.tpp srcs/main/GlBuffer.hpp srcs/main/GlBuffer.tpp \
+	srcs/main/GlProgram.hpp srcs/main/GlUniform.hpp srcs/main/GlUniform.tpp \
+	srcs/main/GlfwWindowProxy.hpp srcs/main/ParticleSystem.hpp srcs/main/f.hpp \
+	srcs/main/gl_utils.hpp srcs/main/opt.hpp srcs/main/particle.cl.hpp \
+	srcs/main/particle.clh srcs/main/polymorphic_union.hpp \
+	srcs/main/polymorphic_union.tpp
 
 $(O_DIR)/srcs/main/ClContextProxy.o $(O_DIR)/srcs/main/ClProgram.o \
 $(O_DIR)/srcs/main/GlProgram.o $(O_DIR)/srcs/main/GlfwWindowProxy.o \
